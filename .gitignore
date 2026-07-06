@@ -1,3 +1,5 @@
 # Files that are too large, push .gz variants
 data/*.csv
 matrixData/*.csv
+matrixData/matrixStateData_200000_20_iter.csv.gz
+matrixData/matrixStateData_200000_20_trial.csv.gz
