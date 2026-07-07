@@ -3,3 +3,6 @@ data/*.csv
 matrixData/*.csv
 matrixData/matrixStateData_200000_20_iter.csv.gz
 matrixData/matrixStateData_200000_20_trial.csv.gz
+
+# Slurm output
+output/*
