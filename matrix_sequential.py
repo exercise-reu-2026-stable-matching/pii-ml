@@ -1,5 +1,6 @@
 # %%
 
+
 # %%
 import torch
 # import torch.accelerator
@@ -9,7 +10,6 @@ from torch.utils.data import Dataset, DataLoader
 import matplotlib.pyplot as plt
 import numpy as np
 import math
-import scipy.stats
 import os
 import pandas as pd
 from typing import Callable
@@ -25,7 +25,7 @@ device
 # Hyper parameters
 batch_size = 64
 learning_rate = 1e-3
-epochs = 10000
+epochs = 100
 
 n = 10
 
@@ -164,18 +164,22 @@ class CustomDataLoader:
 
         return (batch_singletons, packed_batch_means), batch_y
 
+print("Loading data...")
+
 # %%
-data_len = 200000
+data_len = 2000000
 iter_index = 0
 
 data_name = f"matrixStateData_{data_len}_{n}"
 
+# Scalar multiple for ratios to get 200k exactly divisible by 64: 0.99968
 train_ratio = 0.75
 test_ratio = 0.25
 
 # Sample random single iterations from the iteration data
+rand_seed = 1
 iter_df = pd.read_csv(f"matrixData/{data_name}_iter.csv")
-iter_df = iter_df.sample(frac=1).reset_index(drop=True)
+iter_df = iter_df.sample(frac=1, random_state=rand_seed).reset_index(drop=True)
 iter_df = sample_iter_df(iter_df, iter_index)
 
 trial_df = pd.read_csv(f"matrixData/{data_name}_trial.csv")
@@ -196,6 +200,8 @@ test_data = PIIStateDataset(
 
 train_dataloader = DataLoader(training_data, batch_size=batch_size, shuffle=True)
 test_dataloader = DataLoader(test_data, batch_size=batch_size, shuffle=False)
+
+print("Data loading complete.")
 
 # train_dataloader = CustomDataLoader(training_data, batch_size)
 # test_dataloader = CustomDataLoader(test_data, batch_size)
@@ -226,25 +232,66 @@ next(iter(train_dataloader))
 
 # %%
 
-# %%
-# Define model
-class NeuralNetwork(nn.Module):
-    def __init__(self, input_size) -> None:
-        super().__init__()
-        # self.flatten = nn.Flatten()
 
-        self.linear_relu_stack = nn.Sequential(
-            nn.Linear(input_size, 16),
-            nn.ReLU(),
-            nn.Linear(16, 16),
-            nn.ReLU(),
-            nn.Linear(16, 2),
-        )
+# %%
+# Sinusoidal positional embeds
+class SinusoidalPosEmb(nn.Module):
+
+    def __init__(self, dim):
+        super().__init__()
+        self.dim = dim
 
     def forward(self, x):
-        # x = self.flatten(x)
-        logits = self.linear_relu_stack(x)
-        return logits
+        device = x.device
+        half_dim = self.dim // 2
+        emb = math.log(10000) / (half_dim - 1)
+        emb = torch.exp(torch.arange(half_dim, device=device) * -emb)
+        emb = x[:, None] * emb[None, :]
+        emb = torch.cat((emb.sin(), emb.cos()), dim=-1)
+        return emb
+    
+
+# %%
+class Sinusoidal2dPosEnc(nn.Module):
+    def __init__(self, encoding_dim):
+        super().__init__()
+        self.encoding_dim = encoding_dim
+
+    def forward(self, height, width, device):
+        """
+        :param height: height of the positions
+        :param width: width of the positions
+        :return: d_model*height*width position matrix
+        """
+        dim = self.encoding_dim
+
+        if dim % 4 != 0:
+            raise ValueError("Cannot use sin/cos positional encoding with "
+                            "odd dimension (got dim={:d})".format(dim))
+        pe = torch.zeros(dim, height, width, device=device)
+        # Each dimension use half of d_model
+        dim = int(dim / 2)
+        div_term = torch.exp(torch.arange(0., dim, 2, device=device) *
+                            -(math.log(10000.0) / dim))
+        pos_w = torch.arange(0., width, device=device).unsqueeze(1)
+        pos_h = torch.arange(0., height, device=device).unsqueeze(1)
+        pe[0:dim:2, :, :] = torch.sin(pos_w * div_term).transpose(0, 1).unsqueeze(1).repeat(1, height, 1)
+        pe[1:dim:2, :, :] = torch.cos(pos_w * div_term).transpose(0, 1).unsqueeze(1).repeat(1, height, 1)
+        pe[dim::2, :, :] = torch.sin(pos_h * div_term).transpose(0, 1).unsqueeze(2).repeat(1, 1, width)
+        pe[dim + 1::2, :, :] = torch.cos(pos_h * div_term).transpose(0, 1).unsqueeze(2).repeat(1, 1, width)
+
+        return pe.permute([1,2,0])
+
+# %%
+class LearnedPositionalEncoding(nn.Module):
+    def __init__(self, max_seq_len, dim):
+        super().__init__()
+        self.position_embeddings = nn.Embedding(max_seq_len, dim)
+        
+    def forward(self, x):
+        positions = torch.arange(x.size(1), device=x.device).expand(x.size(0), -1)
+        position_embeddings = self.position_embeddings(positions)
+        return x + position_embeddings
 
 # %%
 """
@@ -254,7 +301,7 @@ More complicated things to try:
 - linear layer *before* / after
 - positional encoding
 - other embedding of the "words"
-- dropout / TODO: use 2 layers of a single nn.LSTM with dropout value (see warning for why this does nothing currently)
+- dropout
 """
 
 class LSTMModel(nn.Module):
@@ -288,18 +335,52 @@ class HybridModel(nn.Module):
         self, singleton_input_size: int, seq_input_size: int, output_size: int, hidden_size=64, num_layers=1, dropout=0., bidirectional=False, batch_first=True
     ):
         super().__init__()
+        self.batch_first = batch_first
 
-        self.lstm = nn.LSTM(seq_input_size, hidden_size, num_layers, dropout=dropout, bidirectional=bidirectional, batch_first=batch_first)
+        # if batch_first:
+        #     self.seq_layer_norm = nn.LayerNorm([n**2, seq_input_size])
+        # else:
+        #     self.seq_layer_norm = nn.LayerNorm([batch_size, seq_input_size])
+
+        self.pre_ff = nn.Sequential(
+            # nn.Linear(seq_input_size, hidden_size),
+            nn.Linear(seq_input_size, 16),
+            # nn.ReLU(),
+            # nn.Linear(16, 16),
+            nn.ReLU(),
+            nn.Linear(16, hidden_size),
+        )
+
+        self.positional_encoding = Sinusoidal2dPosEnc(hidden_size)
+        # self.positional_encoding = LearnedPositionalEncoding(n**2, hidden_size)
+
+        self.lstm = nn.LSTM(hidden_size, hidden_size, num_layers, dropout=dropout, bidirectional=bidirectional, batch_first=batch_first)
+
         self.ff_stack = nn.Sequential(
-            nn.Linear(singleton_input_size + hidden_size, 16),
-            nn.ReLU(),
-            nn.Linear(16, 16),
-            nn.ReLU(),
-            nn.Linear(16, output_size)
+            # nn.LayerNorm(singleton_input_size + hidden_size),
+
+            # nn.Linear(singleton_input_size + hidden_size, 16),
+            # nn.ReLU(),
+            # # nn.Linear(16, 16),
+            # # nn.ReLU(),
+            # nn.Linear(16, output_size),
+            nn.Linear(singleton_input_size + hidden_size, output_size),
         )
 
     def forward(self, singletons_x, sequential_x):
-        sequential_out, _ = self.lstm(sequential_x)
+        # ln_sequential_x = self.seq_layer_norm(sequential_x)
+
+        ff_sequential_x = self.pre_ff(sequential_x)
+
+        seq_dim = 1 if self.batch_first else 0
+        seq_len = torch.sqrt(torch.tensor(ff_sequential_x.size(seq_dim))).int().item()
+
+        pe = self.positional_encoding(seq_len, seq_len, ff_sequential_x.get_device()).flatten(0,1)
+        # pe_sequential_x = self.positional_encoding(ff_sequential_x)
+        pe_sequential_x = ff_sequential_x + pe
+        # pe_sequential_x = torch.cat((sequential_x, pe.repeat(sequential_x.size(0), 1, 1)), dim=2)
+
+        sequential_out, _ = self.lstm(pe_sequential_x)
         sequential_out = sequential_out[:, -1, :]
 
         combined_x = torch.cat((singletons_x, sequential_out), dim=1)
@@ -314,7 +395,7 @@ bidirectional = False
 bi_str = "_bi" if bidirectional else ""
 
 # model = LSTMModel(seq_feats.size(1), 2, 16, 1, bidirectional).to(device)
-model = HybridModel(singleton_feats.size(0), seq_feats.size(1), 2, 32, 4, 0.2, bidirectional).to(device)
+model = HybridModel(singleton_feats.size(0), seq_feats.size(1), 2, 64, 2, 0.25, bidirectional, True).to(device)
 
 # %%
 # loss_fn = nn.CrossEntropyLoss()
@@ -326,7 +407,15 @@ loss_fn = nn.BCEWithLogitsLoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 # optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
 
-scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=10, min_lr=1e-5)
+scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=10, min_lr=1e-3)
+
+# %%
+# Let's see how many Parameters our Model has!
+num_model_params = 0
+for param in model.parameters():
+    num_model_params += param.flatten().shape[0]
+
+print("-This Model Has %d (Approximately %d Thousand) Parameters!" % (num_model_params, num_model_params//1e3))
 
 # %%
 def train_loop(dataloader, model, loss_fn, optimizer):
@@ -346,7 +435,6 @@ def train_loop(dataloader, model, loss_fn, optimizer):
         # Compute prediction and loss
         # pred = model(sequential_X)
         pred = model(singletons_X, sequential_X)
-
 
         loss = loss_fn(pred, y)
         train_loss += loss.item()
@@ -427,7 +515,7 @@ for t in range(epochs):
     test_losses[t] = test_loss
     test_accuracies[t] = test_accuracy
 
-    if t % 10 == 0:
+    if t % 1 == 0:
         print(f"Epoch {t+1}  |   lr={last_lr}\n-------------------------------")
         print(f"Train Error: \n Accuracy: {(100*train_accuracy):>0.1f}%, Avg loss: {train_loss:>8f} \n")
         print(f"Test Error: \n Accuracy: {(100*test_accuracy):>0.1f}%, Avg loss: {test_loss:>8f} \n")
@@ -472,4 +560,6 @@ acc_fig, acc_ax = plot_data(x, accuracies, ["Training", "Testing"], f"Accuracy v
 plt.savefig(f"matrixPlots/{data_name}_iter{iter_index}{bi_str}_hybrid_acc")
 
 lr_fig, lr_acc = plot_data(x, learning_rates, title=f"Learning Rate vs. Epoch ({data_name})", ylabel="Learning Rate")
-plt.savefig(f"matrixPlots/{data_name}_iter{iter_index}{bi_str}_hybrid_lr")
+# plt.savefig(f"matrixPlots/{data_name}_iter{iter_index}{bi_str}_hybrid_lr")
+
+
