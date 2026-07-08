@@ -242,11 +242,11 @@ class CustomDataLoader:
 logging.info(f"Importing n={n} data, of length {data_len}, at iteration index {iter_index}")
 
 # Sample random single iterations from the iteration data
-iter_df = pd.read_csv(f"matrixData/{data_name}_iter.csv")
+iter_df = pd.read_csv(f"matrix_data/{data_name}_iter.csv")
 iter_df = iter_df.sample(frac=1, random_state=shuffle_rand_seed).reset_index(drop=True)
 iter_df = sample_iter_df(iter_df, iter_index)
 
-trial_df = pd.read_csv(f"matrixData/{data_name}_trial.csv")
+trial_df = pd.read_csv(f"matrix_data/{data_name}_trial.csv")
 
 training_data = PIIStateDataset(
     iter_df, trial_df,

@@ -1,7 +1,7 @@
 #!/usr/bin/bash
 
 #SBATCH --job-name=pii-state-ml
-#SBATCH --output=output/%A_%4a.out
+#SBATCH --output=slurm_output/%A_%4a.out
 #SBATCH --error=output/%A_%4a.err
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=1
@@ -16,17 +16,17 @@ export TMPDIR=/home/reujpasternak/tmp/
 
 # Obtain the current location
 HDIR=$(pwd)
-INPUT_DIR=matrixData
+INPUT_DIR=matrix_data
+SAVED_MODELS_DIR=savedModels
 PLOT_DIR=transformerPlots
 PLOT_DATA_DIR=transformerPlotData
-SAVED_MODELS_DIR=savedModels
 
 # Create a temporary working directory on the node
 WDIR=/home/reujpasternak/tmp/pii-state-ml
 mkdir -p ${WDIR}/${INPUT_DIR}
+mkdir -p ${WDIR}/${SAVED_MODELS_DIR}
 mkdir -p ${WDIR}/${PLOT_DIR}
 mkdir -p ${WDIR}/${PLOT_DATA_DIR}
-mkdir -p ${WDIR}/${SAVED_MODELS_DIR}
 cd ${WDIR}
 
 # Copy set of input files to the working directory

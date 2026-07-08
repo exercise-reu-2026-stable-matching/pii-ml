@@ -1,8 +1,11 @@
 # Files that are too large, push .gz variants
-data/*.csv
-matrixData/*.csv
-matrixData/matrixStateData_200000_20_iter.csv.gz
-matrixData/matrixStateData_200000_20_trial.csv.gz
+mean_models/mean_data/*.csv
+matrix_data/*.csv
+matrix_data/matrixStateData_200000_20_iter.csv.gz
+matrix_data/matrixStateData_200000_20_trial.csv.gz
+
+# Model checkpoint files
+savedModels/**/*.pt
 
 # Slurm output
 output/*
