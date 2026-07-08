@@ -5,7 +5,6 @@
     "n": 10,
     "data_len": 20000,
     "iter_index": 0,
-    "data_name": "matrixStateData_20000_10",
     "train_ratio": 0.75,
     "test_ratio": 0.25,
     "shuffle_rand_seed": 1,
@@ -13,9 +12,7 @@
     "hidden_size": 32,
     "num_layers": 4,
     "num_heads": 8,
-    "save_model_subdir": "matrixStateData_20000_10_iter0_hs32",
-    "start_epoch": 25,
-    "weight_file": "savedModels/matrixStateData_20000_10_iter0_hs32/matrixStateData_20000_10_iter0_IDx_ep0025.pt",
+    "start_epoch": 0,
     "print_freq": 1,
     "checkpoint_freq": 10
 }
