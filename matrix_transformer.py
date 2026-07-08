@@ -1,19 +1,25 @@
 # %%
+# %reset -f
+
+# %%
 import torch
 # import torch.accelerator
 from torch import nn
 from torch.nn.utils.rnn import pack_sequence, unpack_sequence, PackedSequence
 from torch.utils.data import Dataset, DataLoader
 
-import json
-import logging
-import matplotlib.pyplot as plt
-import numpy as np
-import math
 import os
 import sys
-import pandas as pd
+import math
+import timeit
+import datetime
+import json
+import logging
 from typing import Callable
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 
 # %%
 try:
@@ -36,46 +42,108 @@ logging.basicConfig(
 JOB_ID = os.environ.get("SLURM_JOB_ID", "x")
 
 # %%
-# TODO: Change this to read from a file / environment variables / etc
-
-# --- HYPER PARAMETERS ---
-batch_size = 64
-learning_rate = 1e-3
-epochs = 650
-
-# --- DATASET PARAMETERS ---
-n = 10
-data_len = 2000000
-iter_index = 0
-data_name = f"matrixStateData_{data_len}_{n}"
-
-# Scalar multiple for ratios to get 200k exactly divisible by 64: 0.99968
-train_ratio = 0.75
-test_ratio = 0.25
-
-shuffle_rand_seed = 1
-
-
-# --- MODEL HYPER PARAMETERS ---
-output_size = 2
-hidden_size = 64
-num_layers = 4
-num_heads = 8
-
-# Parameters for saved weights
-start_epoch = 250
-# weight_file = None
-weight_file_job_id = 105100
-weight_file = f"savedModels/{data_name}_iter{iter_index}_hs{hidden_size}/{data_name}_iter{iter_index}_ID{weight_file_job_id}_ep{start_epoch:04d}.pt"
-
-
-# --- TRAINING PARAMETERS ---
-print_freq = 1
-checkpoint_freq = 10
+# Simulate sys.argv in IPYNB
+try:
+    get_ipython() # pyright: ignore[reportUndefinedVariable]
+    # sys.argv = ["matrix_transformer.ipynb"]
+    sys.argv = ["matrix_transformer.ipynb", "transformer_configs/test_config.json"]
+except NameError:
+    pass
 
 # %%
+# TODO: Add parameter for seeding torch initial weights
+
+# IF CONFIG FILE PROVIDED, use its parameters
+if len(sys.argv) > 1:
+    input_file = sys.argv[1]
+
+    with open(input_file) as f:
+        config = json.load(f)
+
+    assert isinstance(config, dict)
+
+    # --- HYPER PARAMETERS ---
+    batch_size = config["batch_size"]
+    learning_rate = config["learning_rate"]
+    epochs = config["epochs"]
+
+
+    # --- DATASET PARAMETERS ---
+    n = config["n"]
+    data_len = config["data_len"]
+    iter_index = config["iter_index"]
+    data_name = config.get("data_name", f"matrixStateData_{data_len}_{n}")
+
+    # Scalar multiple for ratios to get 200k exactly divisible by 64: 0.99968
+    train_ratio = config["train_ratio"]
+    test_ratio = config["test_ratio"]
+
+    shuffle_rand_seed = config["shuffle_rand_seed"]
+
+
+    # --- MODEL HYPER PARAMETERS ---
+    output_size = config["output_size"]
+    hidden_size = config["hidden_size"]
+    num_layers = config["num_layers"]
+    num_heads = config["num_heads"]
+    save_model_subdir = config.get("save_model_subdir", f"{data_name}_iter{iter_index}_hs{hidden_size}")
+
+    # Parameters for saved weights
+    start_epoch = config["start_epoch"]
+    weight_file_job_id = config.get("weight_file_job_id")
+    weight_file = config.get("weight_file")
+
+    if weight_file is None and weight_file_job_id is not None:
+        weight_file = f"savedModels/{data_name}_iter{iter_index}_hs{hidden_size}/{data_name}_iter{iter_index}_ID{weight_file_job_id}_ep{start_epoch:04d}.pt"
+
+    # --- TRAINING PARAMETERS ---
+    print_freq = config["print_freq"]
+    checkpoint_freq = config["checkpoint_freq"]
+
+# OTHERWISE, use hard-coded parameters
+else:
+    # --- HYPER PARAMETERS ---
+    batch_size = 64
+    learning_rate = 1e-3
+    epochs = 25
+
+
+    # --- DATASET PARAMETERS ---
+    n = 10
+    data_len = 20000
+    iter_index = 0
+    data_name = f"matrixStateData_{data_len}_{n}"
+
+    # Scalar multiple for ratios to get 200k exactly divisible by 64: 0.99968
+    train_ratio = 0.75
+    test_ratio = 0.25
+
+    shuffle_rand_seed = 1
+
+
+    # --- MODEL HYPER PARAMETERS ---
+    output_size = 2
+    hidden_size = 32
+    num_layers = 4
+    num_heads = 8
+    save_model_subdir = f"{data_name}_iter{iter_index}_hs{hidden_size}"
+
+    # Parameters for saved weights
+    start_epoch = 0
+    weight_file = None
+    weight_file_job_id = None
+    # weight_file = f"savedModels/{data_name}_iter{iter_index}_hs{hidden_size}/{data_name}_iter{iter_index}_ID{weight_file_job_id}_ep{start_epoch:04d}.pt"
+
+
+    # --- TRAINING PARAMETERS ---
+    print_freq = 1
+    checkpoint_freq = 10
+
+# %%
+os.makedirs(os.path.join("savedModels", save_model_subdir), exist_ok=True)
+
 # Save all hyper parameters to a JSON file
-with open(f"savedModels/{data_name}_iter{iter_index}_ID{JOB_ID}.json", "w") as f:
+with open(f"savedModels/{save_model_subdir}/{data_name}_iter{iter_index}_ID{JOB_ID}.json", "w") as f:
     json.dump(
         {
             "batch_size": batch_size,
@@ -93,6 +161,8 @@ with open(f"savedModels/{data_name}_iter{iter_index}_ID{JOB_ID}.json", "w") as f
             "output_size": output_size,
             "hidden_size": hidden_size,
             "num_layers": num_layers,
+            "num_heads": num_heads,
+            "save_model_subdir": save_model_subdir,
             "start_epoch": start_epoch,
             "weight_file_job_id": weight_file_job_id,
             "weight_file": weight_file,
@@ -268,6 +338,8 @@ test_dataloader = DataLoader(test_data, batch_size=batch_size, shuffle=False)
 # train_dataloader = CustomDataLoader(training_data, batch_size)
 # test_dataloader = CustomDataLoader(test_data, batch_size)
 
+# %%
+# %reset_selective -f "(^model$|^loss_fn$|^optimizer$|^scheduler$)"
 
 # %%
 class SinusoidalPosEmb(nn.Module):
@@ -384,8 +456,8 @@ class Transformer(nn.Module):
     multiple Transformer blocks, and a final output layer.
     
     Args:
-        input_size (int): TODO.
-        output_size (int): Dimensionality of the output.
+        input_size (int): Dimensionality of the input.
+        output_size (int): Dimensionlogging.info("Training done!")ality of the output.
         hidden_size (int): Dimensionality of the hidden layers.
         num_layers (int): Number of Transformer blocks.
         num_heads (int): Number of attention heads.
@@ -412,7 +484,7 @@ class Transformer(nn.Module):
         Args:
             input_seq (Tensor): Input sequence tensor with shape (batch_size, sequence_length, feature_length).
         
-        Returns:
+        Returns:logging.info("Training done!")
             Tensor: Output tensor with shape (batch_size, output_size).
         """
         bs = input_seq.size(0)
@@ -554,12 +626,20 @@ def plot_data_to_csv(learning_rates, train_losses, test_losses, train_accuracies
 
     df.to_csv(f"transformerPlotData/{data_name}_iter{iter_index}_ID{JOB_ID}.csv", index=False)
 
-# %%
-logging.info("Starting training...")
+def save_model(epoch: int, sub_directory: str):
+    file_name = f"{data_name}_iter{iter_index}_ID{JOB_ID}_ep{epoch:04d}"
+    torch.save(model.state_dict(), f"savedModels/{sub_directory}/{file_name}.pt")
 
+def format_seconds(n):
+    return str(datetime.timedelta(seconds=n))
+
+# %%
 learning_rates = np.zeros(epochs, dtype=np.float32)
 train_losses, train_accuracies = np.zeros(epochs, dtype=np.float32), np.zeros(epochs, dtype=np.float32)
 test_losses, test_accuracies = np.zeros(epochs, dtype=np.float32), np.zeros(epochs, dtype=np.float32)
+
+logging.info("Starting training...")
+start_wtime = timeit.default_timer()
 
 for local_epoch in range(epochs):
     # Epoch including start epoch
@@ -585,11 +665,17 @@ for local_epoch in range(epochs):
 
     if (global_epoch + 1) % checkpoint_freq == 0:
         plot_data_to_csv(learning_rates, train_losses, test_losses, train_accuracies, test_accuracies, local_epoch, start_epoch)
-        torch.save(model.state_dict(), f"savedModels/{data_name}_iter{iter_index}_ID{JOB_ID}_ep{global_epoch + 1:04d}.pt")
+        save_model(global_epoch + 1, save_model_subdir)
 
 plot_data_to_csv(learning_rates, train_losses, test_losses, train_accuracies, test_accuracies, epochs, start_epoch)
-torch.save(model.state_dict(), f"savedModels/{data_name}_iter{iter_index}_ID{JOB_ID}_ep{start_epoch + epochs:04d}.pt")
-logging.info("Training done!")
+save_model(start_epoch + epochs, save_model_subdir)
+
+stop_wtime = timeit.default_timer()
+total_wtime = round(stop_wtime - start_wtime)
+wtime_per_epoch = round(total_wtime / epochs)
+
+logging.info(f"Training done in {format_seconds(total_wtime)}!")
+logging.info(f"Average epoch runtime: {format_seconds(wtime_per_epoch)}")
 
 # %%
 def plot_data(

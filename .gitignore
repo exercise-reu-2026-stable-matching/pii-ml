@@ -9,3 +9,4 @@ savedModels/**/*.pt
 
 # Slurm output
 output/*
+slurm_output/*
