@@ -51,8 +51,6 @@ except NameError:
     pass
 
 # %%
-# TODO: Add parameter for seeding torch initial weights
-
 # IF CONFIG FILE PROVIDED, use its parameters
 if len(sys.argv) > 1:
     input_file = sys.argv[1]
@@ -66,6 +64,7 @@ if len(sys.argv) > 1:
     batch_size = config["batch_size"]
     learning_rate = config["learning_rate"]
     epochs = config["epochs"]
+    start_epoch = config["start_epoch"]
 
 
     # --- DATASET PARAMETERS ---
@@ -87,9 +86,9 @@ if len(sys.argv) > 1:
     num_layers = config["num_layers"]
     num_heads = config["num_heads"]
     save_model_subdir = config.get("save_model_subdir", f"{data_name}_iter{iter_index}_hs{hidden_size}")
+    torch_rand_seed = config.get("torch_rand_seed", torch.seed())
 
     # Parameters for saved weights
-    start_epoch = config["start_epoch"]
     weight_file_job_id = config.get("weight_file_job_id")
     weight_file = config.get("weight_file")
 
@@ -106,6 +105,7 @@ else:
     batch_size = 64
     learning_rate = 1e-3
     epochs = 25
+    start_epoch = 0
 
 
     # --- DATASET PARAMETERS ---
@@ -127,9 +127,9 @@ else:
     num_layers = 4
     num_heads = 8
     save_model_subdir = f"{data_name}_iter{iter_index}_hs{hidden_size}"
+    torch_rand_seed = torch.seed()
 
     # Parameters for saved weights
-    start_epoch = 0
     weight_file = None
     weight_file_job_id = None
     # weight_file = f"savedModels/{data_name}_iter{iter_index}_hs{hidden_size}/{data_name}_iter{iter_index}_ID{weight_file_job_id}_ep{start_epoch:04d}.pt"
@@ -163,6 +163,7 @@ with open(f"savedModels/{save_model_subdir}/{data_name}_iter{iter_index}_ID{JOB_
             "num_layers": num_layers,
             "num_heads": num_heads,
             "save_model_subdir": save_model_subdir,
+            "torch_rand_seed": torch_rand_seed,
             "start_epoch": start_epoch,
             "weight_file_job_id": weight_file_job_id,
             "weight_file": weight_file,
@@ -509,6 +510,9 @@ class Transformer(nn.Module):
         return self.fc_out(embs[:, 0])
 
 # %%
+# Set the random seed
+torch.manual_seed(torch_rand_seed)
+
 (singleton_feats, seq_feats) ,_y = training_data[0]
 
 # Create model
