@@ -1,6 +1,22 @@
 #!/usr/bin/bash
 
-JOB_OUTPUT=$(sbatch job)
+PARTITION="hslinux"
+
+# If arg 1 is not empty, then use it as the partition
+if [ ! -z "$1" ]
+  then
+    PARTITION=${1}
+fi
+
+# If arg 2 is not empty, then use it as the node list
+if [ ! -z "$2" ]
+  then
+    NODE_LIST_ARG="--nodelist ${2}"
+else
+    NODE_LIST_ARG=""
+fi
+
+JOB_OUTPUT=$(sbatch --partition ${PARTITION} ${NODE_LIST_ARG} job)
 echo $JOB_OUTPUT
 
 # Send job ID to monitor script

@@ -1,36 +1,107 @@
 # %%
-
-print("Importing packages...")
-
-# %%
 import torch
 # import torch.accelerator
 from torch import nn
 from torch.nn.utils.rnn import pack_sequence, unpack_sequence, PackedSequence
 from torch.utils.data import Dataset, DataLoader
+
+import json
+import logging
 import matplotlib.pyplot as plt
 import numpy as np
 import math
 import os
+import sys
 import pandas as pd
 from typing import Callable
-
-print(f"Running at path {os.getcwd()}")
 
 # %%
 try:
     device = torch.accelerator.current_accelerator().type if torch.accelerator.is_available() else "cpu"
 except AttributeError:
     device = "cpu"
-device
+logging.info("Running Torch on device: %s", device)
 
 # %%
-# Hyper parameters
+logging.basicConfig(
+    format="[%(asctime)s] [%(levelname)-8s] %(message)s",
+    level=logging.INFO,
+    datefmt="%Y-%m-%d %H:%M:%S",
+    stream=sys.stdout,
+    force=True,
+)
+
+# %%
+# Gather environment variables
+JOB_ID = os.environ.get("SLURM_JOB_ID", "x")
+
+# %%
+# TODO: Change this to read from a file / environment variables / etc
+
+# --- HYPER PARAMETERS ---
 batch_size = 64
 learning_rate = 1e-3
-epochs = 1500
+epochs = 650
 
+# --- DATASET PARAMETERS ---
 n = 10
+data_len = 2000000
+iter_index = 0
+data_name = f"matrixStateData_{data_len}_{n}"
+
+# Scalar multiple for ratios to get 200k exactly divisible by 64: 0.99968
+train_ratio = 0.75
+test_ratio = 0.25
+
+shuffle_rand_seed = 1
+
+
+# --- MODEL HYPER PARAMETERS ---
+output_size = 2
+hidden_size = 64
+num_layers = 4
+num_heads = 8
+
+# Parameters for saved weights
+start_epoch = 250
+# weight_file = None
+weight_file_job_id = 105100
+weight_file = f"savedModels/{data_name}_iter{iter_index}_hs{hidden_size}/{data_name}_iter{iter_index}_ID{weight_file_job_id}_ep{start_epoch:04d}.pt"
+
+
+# --- TRAINING PARAMETERS ---
+print_freq = 1
+checkpoint_freq = 10
+
+# %%
+# Save all hyper parameters to a JSON file
+with open(f"savedModels/{data_name}_iter{iter_index}_ID{JOB_ID}.json", "w") as f:
+    json.dump(
+        {
+            "batch_size": batch_size,
+            "learning_rate": learning_rate,
+            "epochs": epochs,
+            
+            "n": n,
+            "data_len": data_len,
+            "iter_index": iter_index,
+            "data_name": data_name,
+            "train_ratio": train_ratio,
+            "test_ratio": test_ratio,
+            "shuffle_rand_seed": shuffle_rand_seed,
+
+            "output_size": output_size,
+            "hidden_size": hidden_size,
+            "num_layers": num_layers,
+            "start_epoch": start_epoch,
+            "weight_file_job_id": weight_file_job_id,
+            "weight_file": weight_file,
+
+            "print_freq": print_freq,
+            "checkpoint_freq": checkpoint_freq,
+        },
+        f
+    )
 
 # %%
 def list_from_str(str_list: str, fn_apply_to_items: Callable) -> list:
@@ -167,22 +238,12 @@ class CustomDataLoader:
 
         return (batch_singletons, packed_batch_means), batch_y
 
-print("Importing data...")
-
 # %%
-data_len = 200000
-iter_index = 0
-
-data_name = f"matrixStateData_{data_len}_{n}"
-
-# Scalar multiple for ratios to get 200k exactly divisible by 64: 0.99968
-train_ratio = 0.75
-test_ratio = 0.25
+logging.info(f"Importing n={n} data, of length {data_len}, at iteration index {iter_index}")
 
 # Sample random single iterations from the iteration data
-rand_seed = 1
 iter_df = pd.read_csv(f"matrixData/{data_name}_iter.csv")
-iter_df = iter_df.sample(frac=1, random_state=rand_seed).reset_index(drop=True)
+iter_df = iter_df.sample(frac=1, random_state=shuffle_rand_seed).reset_index(drop=True)
 iter_df = sample_iter_df(iter_df, iter_index)
 
 trial_df = pd.read_csv(f"matrixData/{data_name}_trial.csv")
@@ -207,36 +268,9 @@ test_dataloader = DataLoader(test_data, batch_size=batch_size, shuffle=False)
 # train_dataloader = CustomDataLoader(training_data, batch_size)
 # test_dataloader = CustomDataLoader(test_data, batch_size)
 
-# %%
-# training_data[0][0].shape
-
-# print(len(training_data), len(test_data))
 
 # %%
-# print(
-#     torch.stack([y for _, y in training_data])[:, 1].sum().item() / len(training_data) * 100,
-#     torch.stack([y for _, y in test_data])[:, 1].sum().item() / len(test_data) * 100,
-# )
-
-# %%
-# for i in range(2):
-#     print(i)
-#     print(training_data[i])
-
-# %%
-# for i in range(2):
-#     print(i)
-#     print(test_data[i])
-
-# # %%
-# next(iter(train_dataloader))
-
-# %%
-
-# %%
-# Sinusoidal positional embeds
 class SinusoidalPosEmb(nn.Module):
-
     def __init__(self, dim):
         super().__init__()
         self.dim = dim
@@ -249,10 +283,6 @@ class SinusoidalPosEmb(nn.Module):
         emb = x[:, None] * emb[None, :]
         emb = torch.cat((emb.sin(), emb.cos()), dim=-1)
         return emb
-    
-
-# %%
-SinusoidalPosEmb(4)(torch.arange(5))
 
 # %%
 class LearnedPositionalEncoding(nn.Module):
@@ -266,8 +296,9 @@ class LearnedPositionalEncoding(nn.Module):
         return x + position_embeddings
 
 # %%
-# https://github.com/wzlxjtu/PositionalEncoding2D/blob/master/positionalembedding2d.py
 class Sinusoidal2dPosEnc(nn.Module):
+    # https://github.com/wzlxjtu/PositionalEncoding2D/blob/master/positionalembedding2d.py
+
     def __init__(self, encoding_dim):
         super().__init__()
         self.encoding_dim = encoding_dim
@@ -298,8 +329,9 @@ class Sinusoidal2dPosEnc(nn.Module):
         return pe.permute([1,2,0])
 
 # %%
-# https://github.com/LukeDitria/pytorch_tutorials/blob/main/section14_transformers/solutions/Pytorch1_Transformer_Text_Classification_Multi_Block.ipynb
 class TransformerBlock(nn.Module):
+    # https://github.com/LukeDitria/pytorch_tutorials/blob/main/section14_transformers/solutions/Pytorch1_Transformer_Text_Classification_Multi_Block.ipynb
+
     def __init__(self, hidden_size=128, num_heads=4):
         super().__init__()
         
@@ -344,9 +376,9 @@ class TransformerBlock(nn.Module):
         return output
 
 # %%
-# https://github.com/LukeDitria/pytorch_tutorials/blob/main/section14_transformers/solutions/Pytorch1_Transformer_Text_Classification_Multi_Block.ipynb
-# "Encoder-Only" Style Transformer with self-attention
 class Transformer(nn.Module):
+    # https://github.com/LukeDitria/pytorch_tutorials/blob/main/section14_transformers/solutions/Pytorch1_Transformer_Text_Classification_Multi_Block.ipynb
+
     """
     Transformer model consisting of an embedding layer, positional embeddings, 
     multiple Transformer blocks, and a final output layer.
@@ -405,26 +437,22 @@ class Transformer(nn.Module):
         return self.fc_out(embs[:, 0])
 
 # %%
-# a = torch.zeros(1, 1, 8)
-# display(a)
-
-# exp_a = a.expand(4, 1, -1)
-# display(exp_a)
-
-# b = torch.ones(4, 5, 8)
-# display(b)
-
-# torch.cat((exp_a, b), dim=1)
-
-# %%
 (singleton_feats, seq_feats) ,_y = training_data[0]
 
-# Embedding size
-hidden_size = 256
-
 # Create model
-model = Transformer(seq_feats.size(1), output_size=2, hidden_size=hidden_size, 
-                            num_layers=4, num_heads=8).to(device)
+model = Transformer(seq_feats.size(1), output_size=output_size, hidden_size=hidden_size, 
+                            num_layers=num_layers, num_heads=num_heads).to(device)
+
+if weight_file is not None:
+    model.load_state_dict(torch.load(weight_file))
+
+logging.info(
+f"""Created Transformer model
+    output_size = {output_size}
+    hidden_size = {hidden_size}
+    num_layers = {num_layers}
+    num_heads = {num_heads}"""
+)
 
 # %%
 # loss_fn = nn.CrossEntropyLoss()
@@ -440,11 +468,9 @@ scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', fa
 
 # %%
 # Let's see how many Parameters our Model has!
-num_model_params = 0
-for param in model.parameters():
-    num_model_params += param.flatten().shape[0]
+num_params = sum(p.numel() for p in model.parameters())
 
-print("-This Model Has %d (Approximately %d Thousand) Parameters!" % (num_model_params, num_model_params//1e3))
+logging.info("This model has %.1fk parameters!", num_params / 1e3)
 
 # %%
 def train_loop(dataloader, model, loss_fn, optimizer):
@@ -516,44 +542,54 @@ def test_loop(dataloader, model, loss_fn):
     return test_loss, correct
 
 # %%
-def plot_data_to_csv(learning_rates, train_losses, test_losses, train_accuracies, test_accuracies, epoch):
+def plot_data_to_csv(learning_rates, train_losses, test_losses, train_accuracies, test_accuracies, local_epoch, start_epoch):
     df = pd.DataFrame({
-        "learning_rate": learning_rates[0:epoch],
-        "train_loss": train_losses[0:epoch],
-        "test_loss": test_losses[0:epoch],
-        "train_accuracy": train_accuracies[0:epoch],
-        "test_accuracy": test_accuracies[0:epoch],
+        "epochs": np.arange(start_epoch, start_epoch + local_epoch),
+        "learning_rate": learning_rates[0:local_epoch],
+        "train_loss": train_losses[0:local_epoch],
+        "test_loss": test_losses[0:local_epoch],
+        "train_accuracy": train_accuracies[0:local_epoch],
+        "test_accuracy": test_accuracies[0:local_epoch],
     })
 
-    df.to_csv(f"transformerPlotData/{data_name}_iter{iter_index}.csv", index=False)
+    df.to_csv(f"transformerPlotData/{data_name}_iter{iter_index}_ID{JOB_ID}.csv", index=False)
 
 # %%
+logging.info("Starting training...")
+
 learning_rates = np.zeros(epochs, dtype=np.float32)
 train_losses, train_accuracies = np.zeros(epochs, dtype=np.float32), np.zeros(epochs, dtype=np.float32)
 test_losses, test_accuracies = np.zeros(epochs, dtype=np.float32), np.zeros(epochs, dtype=np.float32)
 
-for t in range(epochs):
+for local_epoch in range(epochs):
+    # Epoch including start epoch
+    global_epoch = start_epoch + local_epoch
+
     last_lr = scheduler.get_last_lr()
-    learning_rates[t] = last_lr[0]
+    learning_rates[local_epoch] = last_lr[0]
 
     train_loss, train_accuracy = train_loop(train_dataloader, model, loss_fn, optimizer)
     test_loss, test_accuracy = test_loop(test_dataloader, model, loss_fn)
 
-    train_losses[t] = train_loss
-    train_accuracies[t] = train_accuracy
-    test_losses[t] = test_loss
-    test_accuracies[t] = test_accuracy
+    train_losses[local_epoch] = train_loss
+    train_accuracies[local_epoch] = train_accuracy
+    test_losses[local_epoch] = test_loss
+    test_accuracies[local_epoch] = test_accuracy
 
-    if t % 5 == 0:
-        print(f"Epoch {t+1}  |   lr={last_lr}\n-------------------------------")
-        print(f"Train Error: \n Accuracy: {(100*train_accuracy):>0.1f}%, Avg loss: {train_loss:>8f} \n")
-        print(f"Test Error: \n Accuracy: {(100*test_accuracy):>0.1f}%, Avg loss: {test_loss:>8f} \n")
+    if local_epoch % print_freq == 0:
+        logging.info(
+            f"Epoch {global_epoch + 1}  |   lr={last_lr}\n-------------------------------\n" +
+            f"Train Error: \n Accuracy: {(100*train_accuracy):>0.1f}%, Avg loss: {train_loss:>8f} \n\n" +
+            f"Test Error: \n Accuracy: {(100*test_accuracy):>0.1f}%, Avg loss: {test_loss:>8f} \n",
+        )
 
-    if t % 100 == 0:
-        plot_data_to_csv(learning_rates, train_losses, test_losses, train_accuracies, test_accuracies, t)
+    if (global_epoch + 1) % checkpoint_freq == 0:
+        plot_data_to_csv(learning_rates, train_losses, test_losses, train_accuracies, test_accuracies, local_epoch, start_epoch)
+        torch.save(model.state_dict(), f"savedModels/{data_name}_iter{iter_index}_ID{JOB_ID}_ep{global_epoch + 1:04d}.pt")
 
-plot_data_to_csv(learning_rates, train_losses, test_losses, train_accuracies, test_accuracies, epochs)
-print("Done!")
+plot_data_to_csv(learning_rates, train_losses, test_losses, train_accuracies, test_accuracies, epochs, start_epoch)
+torch.save(model.state_dict(), f"savedModels/{data_name}_iter{iter_index}_ID{JOB_ID}_ep{start_epoch + epochs:04d}.pt")
+logging.info("Training done!")
 
 # %%
 def plot_data(
@@ -578,17 +614,17 @@ def plot_data(
     return fig, ax
 
 # %%
-x = np.arange(0, epochs)
+x = np.arange(start_epoch, start_epoch + epochs)
 
 losses = np.vstack((train_losses, test_losses))
 loss_fig, loss_ax = plot_data(x, losses, ["Training", "Testing"], f"Loss vs. Epoch ({data_name})", "Loss")
-plt.savefig(f"transformerPlots/{data_name}_iter{iter_index}_loss")
+plt.savefig(f"transformerPlots/{data_name}_iter{iter_index}_ID{JOB_ID}_loss")
 
 accuracies = np.vstack((train_accuracies, test_accuracies)) * 100
 acc_fig, acc_ax = plot_data(x, accuracies, ["Training", "Testing"], f"Accuracy vs. Epoch ({data_name})", "Accuracy (%)")
-plt.savefig(f"transformerPlots/{data_name}_iter{iter_index}_acc")
+plt.savefig(f"transformerPlots/{data_name}_iter{iter_index}_ID{JOB_ID}_acc")
 
 lr_fig, lr_acc = plot_data(x, learning_rates, title=f"Learning Rate vs. Epoch ({data_name})", ylabel="Learning Rate")
-# plt.savefig(f"transformerPlots/{data_name}_iter{iter_index}_lr")
+# plt.savefig(f"transformerPlots/{data_name}_iter{iter_index}_ID{JOB_ID}_lr")
 
 
