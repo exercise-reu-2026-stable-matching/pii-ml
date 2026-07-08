@@ -8,7 +8,7 @@
 #SBATCH --time=24:00:00
 #SBATCH --array=0-0
 
-echo "Running job on ${SLURMD_NODENAME}"
+echo "[JOB] Running job on ${SLURMD_NODENAME}"
 
 # Create TMP directory
 mkdir -p /home/reujpasternak/tmp
@@ -37,11 +37,13 @@ mkdir -p ${WDIR}/${PLOT_DATA_DIR}
 cd ${WDIR}
 
 # Copy set of input files to the working directory
+echo "[JOB] Copying input files to working directory..."
 cp    ${HDIR}/${CONFIG_DIR}/*.json  ${WDIR}/${CONFIG_DIR}
 cp    ${HDIR}/${INPUT_DIR}/*.csv    ${WDIR}/${INPUT_DIR}
 cp -a ${HDIR}/${SAVED_MODELS_DIR}/* ${WDIR}/${SAVED_MODELS_DIR}
 
 # Setup PyTorch environment and run
+echo "[JOB] Creating PyTorch virtual environment..."
 python3 -m venv ${WDIR}/venv
 source ${WDIR}/venv/bin/activate
 
@@ -52,12 +54,14 @@ echo "[JOB] About to run python script"
 python3 -u ${HDIR}/matrix_transformer.py ${CONFIG_DIR}/${CONFIG_FILE}
 
 # Copy the set of output files back to the original folder
+echo "[JOB] Copying output files back to home directory..."
 cp -a ${WDIR}/${PLOT_DIR}/*         ${HDIR}/${PLOT_DIR}/
 cp -a ${WDIR}/${PLOT_DATA_DIR}/*    ${HDIR}/${PLOT_DATA_DIR}/
 cp -a ${WDIR}/${SAVED_MODELS_DIR}/* ${HDIR}/${SAVED_MODELS_DIR}/
 
+echo "[JOB] Cleaning up local files"
 # Tidy up local files
-rm -rf ${WDIR}/*
+rm -rf ${WDIR}/* # TODO: Rename venv to torch_venv and exclude it from deletion
 
 # TRIAL_SIZE=1000
 # N_SIZES=(20 30 40 50 60 70 80 90 100)
