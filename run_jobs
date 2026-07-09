@@ -1,22 +1,29 @@
 #!/usr/bin/bash
 
-PARTITION="hslinux"
-
-# If arg 1 is not empty, then use it as the partition
-if [ ! -z "$1" ]
+if [ -z "$1" ]
   then
-    PARTITION=${1}
+    echo "Missing required argument 1: configuration file"
+    exit 1
 fi
 
-# If arg 2 is not empty, then use it as the node list
+CONFIG_FILE=${1}
+
+PARTITION="hslinux"
+# If arg 2 is not empty, then use it as the partition
 if [ ! -z "$2" ]
   then
-    NODE_LIST_ARG="--nodelist ${2}"
+    PARTITION=${2}
+fi
+
+# If arg 3 is not empty, then use it as the node list
+if [ ! -z "$3" ]
+  then
+    NODE_LIST_ARG="--nodelist ${3}"
 else
     NODE_LIST_ARG=""
 fi
 
-JOB_OUTPUT=$(sbatch --partition ${PARTITION} ${NODE_LIST_ARG} job)
+JOB_OUTPUT=$(sbatch --partition ${PARTITION} ${NODE_LIST_ARG} job ${CONFIG_FILE})
 echo $JOB_OUTPUT
 
 # TODO: Watch the output in slurm_output instead of (or after) the job status

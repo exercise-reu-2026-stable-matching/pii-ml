@@ -10,6 +10,13 @@
 
 echo "[JOB] Running job on ${SLURMD_NODENAME}"
 
+# Check for first argument
+if [ -z "$1" ]
+  then
+    echo "Missing required argument 1: configuration file"
+    exit 1
+fi
+
 REPO_DIR=$(pwd)
 cd matrix_models
 
@@ -21,7 +28,8 @@ export TMPDIR=/home/reujpasternak/tmp/
 HDIR=$(pwd)
 
 # Specify configuration file
-CONFIG_FILE="test_config.json" # TODO: Make this a parameter!!!!
+CONFIG_FILE=${1}
+echo "[JOB] Using configuration file ${1}"
 
 # List directory names
 CONFIG_DIR=transformer_configs
