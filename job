@@ -45,8 +45,8 @@ cp -a ${HDIR}/${SAVED_MODELS_DIR}/* ${WDIR}/${SAVED_MODELS_DIR}
 
 # Setup PyTorch environment and run
 echo "[JOB] Creating PyTorch virtual environment..."
-python3 -m venv ${WDIR}/venv
-source ${WDIR}/venv/bin/activate
+python3 -m venv ${WDIR}/torch_venv
+source ${WDIR}/torch_venv/bin/activate
 
 python3 -m pip install matplotlib numpy scipy pandas # TODO: Use requirements.txt
 python3 -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cu129
@@ -61,8 +61,8 @@ cp -a ${WDIR}/${PLOT_DATA_DIR}/*    ${HDIR}/${PLOT_DATA_DIR}/
 cp -a ${WDIR}/${SAVED_MODELS_DIR}/* ${HDIR}/${SAVED_MODELS_DIR}/
 
 echo "[JOB] Cleaning up local files"
-# Tidy up local files
-rm -rf ${WDIR}/* # TODO: Rename venv to torch_venv and exclude it from deletion
+# Tidy up local files, except the virtual environment (save for future use)
+ls ${WDIR} | grep -xvF torch_venv | xargs rm -rf --
 
 echo "[JOB] Job ${SLURM_JOB_ID} complete!"
 
