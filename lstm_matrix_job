@@ -9,6 +9,7 @@
 #SBATCH --array=0-0
 
 echo "Running job on ${SLURMD_NODENAME}"
+cd matrix_models
 
 # Create TMP directory
 mkdir -p /home/reujpasternak/tmp

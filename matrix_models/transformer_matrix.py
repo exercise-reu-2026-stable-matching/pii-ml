@@ -45,8 +45,8 @@ JOB_ID = os.environ.get("SLURM_JOB_ID", "x")
 # Simulate sys.argv in IPYNB
 try:
     get_ipython() # pyright: ignore[reportUndefinedVariable]
-    # sys.argv = ["matrix_transformer.ipynb"]
-    sys.argv = ["matrix_transformer.ipynb", "transformer_configs/test_config.json"]
+    # sys.argv = ["transformer_matrix.ipynb"]
+    sys.argv = ["transformer_matrix.ipynb", "transformer_configs/test_config.json"]
 except NameError:
     pass
 
@@ -93,7 +93,7 @@ if len(sys.argv) > 1:
     weight_file = config.get("weight_file")
 
     if weight_file is None and weight_file_job_id is not None:
-        weight_file = f"savedModels/{data_name}_iter{iter_index}_hs{hidden_size}/{data_name}_iter{iter_index}_ID{weight_file_job_id}_ep{start_epoch:04d}.pt"
+        weight_file = f"saved_transformer_models/{data_name}_iter{iter_index}_hs{hidden_size}/{data_name}_iter{iter_index}_ID{weight_file_job_id}_ep{start_epoch:04d}.pt"
 
     # --- TRAINING PARAMETERS ---
     print_freq = config["print_freq"]
@@ -132,7 +132,7 @@ else:
     # Parameters for saved weights
     weight_file = None
     weight_file_job_id = None
-    # weight_file = f"savedModels/{data_name}_iter{iter_index}_hs{hidden_size}/{data_name}_iter{iter_index}_ID{weight_file_job_id}_ep{start_epoch:04d}.pt"
+    # weight_file = f"saved_transformer_models/{data_name}_iter{iter_index}_hs{hidden_size}/{data_name}_iter{iter_index}_ID{weight_file_job_id}_ep{start_epoch:04d}.pt"
 
 
     # --- TRAINING PARAMETERS ---
@@ -140,10 +140,10 @@ else:
     checkpoint_freq = 10
 
 # %%
-os.makedirs(os.path.join("savedModels", save_model_subdir), exist_ok=True)
+os.makedirs(os.path.join("saved_transformer_models", save_model_subdir), exist_ok=True)
 
 # Save all hyper parameters to a JSON file
-with open(f"savedModels/{save_model_subdir}/{data_name}_iter{iter_index}_ID{JOB_ID}.json", "w") as f:
+with open(f"saved_transformer_models/{save_model_subdir}/{data_name}_iter{iter_index}_ID{JOB_ID}.json", "w") as f:
     json.dump(
         {
             "batch_size": batch_size,
@@ -628,11 +628,11 @@ def plot_data_to_csv(learning_rates, train_losses, test_losses, train_accuracies
         "test_accuracy": test_accuracies[0:local_epoch],
     })
 
-    df.to_csv(f"transformerPlotData/{data_name}_iter{iter_index}_ID{JOB_ID}.csv", index=False)
+    df.to_csv(f"transformer_matrix_plot_data/{data_name}_iter{iter_index}_ID{JOB_ID}.csv", index=False)
 
 def save_model(epoch: int, sub_directory: str):
     file_name = f"{data_name}_iter{iter_index}_ID{JOB_ID}_ep{epoch:04d}"
-    torch.save(model.state_dict(), f"savedModels/{sub_directory}/{file_name}.pt")
+    torch.save(model.state_dict(), f"saved_transformer_models/{sub_directory}/{file_name}.pt")
 
 def format_seconds(n):
     return str(datetime.timedelta(seconds=n))
@@ -708,13 +708,13 @@ x = np.arange(start_epoch, start_epoch + epochs)
 
 losses = np.vstack((train_losses, test_losses))
 loss_fig, loss_ax = plot_data(x, losses, ["Training", "Testing"], f"Loss vs. Epoch ({data_name})", "Loss")
-plt.savefig(f"transformerPlots/{data_name}_iter{iter_index}_ID{JOB_ID}_loss")
+plt.savefig(f"transformer_matrix_plots/{data_name}_iter{iter_index}_ID{JOB_ID}_loss")
 
 accuracies = np.vstack((train_accuracies, test_accuracies)) * 100
 acc_fig, acc_ax = plot_data(x, accuracies, ["Training", "Testing"], f"Accuracy vs. Epoch ({data_name})", "Accuracy (%)")
-plt.savefig(f"transformerPlots/{data_name}_iter{iter_index}_ID{JOB_ID}_acc")
+plt.savefig(f"transformer_matrix_plots/{data_name}_iter{iter_index}_ID{JOB_ID}_acc")
 
 lr_fig, lr_acc = plot_data(x, learning_rates, title=f"Learning Rate vs. Epoch ({data_name})", ylabel="Learning Rate")
-# plt.savefig(f"transformerPlots/{data_name}_iter{iter_index}_ID{JOB_ID}_lr")
+# plt.savefig(f"transformer_matrix_plots/{data_name}_iter{iter_index}_ID{JOB_ID}_lr")
 
 

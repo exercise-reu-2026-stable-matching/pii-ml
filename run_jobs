@@ -19,5 +19,7 @@ fi
 JOB_OUTPUT=$(sbatch --partition ${PARTITION} ${NODE_LIST_ARG} job)
 echo $JOB_OUTPUT
 
+# TODO: Watch the output in slurm_output instead of (or after) the job status
+
 # Send job ID to monitor script
 bash monitor $(echo $JOB_OUTPUT | grep -E -o -a -m 1 -h "[0-9]+")

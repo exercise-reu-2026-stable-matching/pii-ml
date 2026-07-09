@@ -1,0 +1,1 @@
+{"batch_size": 128, "learning_rate": 0.001, "epochs": 250, "n": 10, "data_len": 2000000, "iter_index": 0, "data_name": "matrixStateData_2000000_10", "train_ratio": 0.75, "test_ratio": 0.25, "shuffle_rand_seed": 1, "output_size": 2, "hidden_size": 128, "num_layers": 4, "start_epoch": 0, "weight_file_job_id": null, "weight_file": null, "print_freq": 1, "checkpoint_freq": 10}
