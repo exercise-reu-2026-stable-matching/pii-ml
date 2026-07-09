@@ -9,6 +9,8 @@
 #SBATCH --array=0-0
 
 echo "[JOB] Running job on ${SLURMD_NODENAME}"
+
+REPO_DIR=$(pwd)
 cd matrix_models
 
 # Create TMP directory
@@ -48,8 +50,8 @@ echo "[JOB] Creating PyTorch virtual environment..."
 python3 -m venv ${WDIR}/torch_venv
 source ${WDIR}/torch_venv/bin/activate
 
-python3 -m pip install matplotlib numpy scipy pandas # TODO: Use requirements.txt
 python3 -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cu129
+python3 -m pip install -r ${REPO_DIR}/requirements.txt
 
 echo "[JOB] About to run python script"
 python3 -u ${HDIR}/transformer_matrix.py ${CONFIG_DIR}/${CONFIG_FILE}
