@@ -29,4 +29,6 @@ echo $JOB_OUTPUT
 # TODO: Watch the output in slurm_output instead of (or after) the job status
 
 # Send job ID to monitor script
-bash monitor $(echo $JOB_OUTPUT | grep -E -o -a -m 1 -h "[0-9]+")
+JOB_ID=$(echo $JOB_OUTPUT | grep -E -o -a -m 1 -h "[0-9]+")
+bash monitor $JOB_ID
+watch -n 2 "tail -n 20 slurm_output/${JOB_ID}_0000.out"
