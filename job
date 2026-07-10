@@ -55,6 +55,8 @@ cp -a ${HDIR}/${SAVED_MODELS_DIR}/* ${WDIR}/${SAVED_MODELS_DIR}
 
 # Setup PyTorch environment and run
 echo "[JOB] Creating PyTorch virtual environment..."
+
+export PYTHONOPTIMIZE=2 # Disable assertions and docstrings
 python3 -m venv ${WDIR}/torch_venv
 source ${WDIR}/torch_venv/bin/activate
 
