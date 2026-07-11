@@ -40,6 +40,12 @@ PLOT_DATA_DIR=transformer_matrix_plots
 
 # Create a temporary working directory on the node
 WDIR=/home/reujpasternak/tmp/pii-state-ml
+mkdir -p ${WDIR}
+
+# Tidy up prior job files, except the virtual environment
+ls ${WDIR} | grep -xvF torch_venv | xargs rm -rf --
+
+# Create subdirectories within working directory
 mkdir -p ${WDIR}/${CONFIG_DIR}
 mkdir -p ${WDIR}/${INPUT_DIR}
 mkdir -p ${WDIR}/${SAVED_MODELS_DIR}
