@@ -1,6 +1,8 @@
-# Files that are too large, push .gz variants
+# Files that are too large, push .gz variants if able
 mean_models/mean_data/*.csv
 matrix_models/*matrix_data/*.csv
+
+matrix_models/*matrix_data/matrixStateData_2000000*
 matrix_models/*matrix_data/matrixStateData_200000*_20_iter.csv.gz
 matrix_models/*matrix_data/matrixStateData_200000*_20_trial.csv.gz
 
