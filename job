@@ -49,9 +49,13 @@ cd ${WDIR}
 
 # Copy set of input files to the working directory
 echo "[JOB] Copying input files to working directory..."
-cp    ${HDIR}/${CONFIG_DIR}/*.json  ${WDIR}/${CONFIG_DIR}
-cp    ${HDIR}/${INPUT_DIR}/*.csv    ${WDIR}/${INPUT_DIR}
-cp -a ${HDIR}/${SAVED_MODELS_DIR}/* ${WDIR}/${SAVED_MODELS_DIR}
+cp    ${HDIR}/${CONFIG_DIR}/*.json     ${WDIR}/${CONFIG_DIR}
+cp    ${HDIR}/${INPUT_DIR}/*.csv.gz    ${WDIR}/${INPUT_DIR}
+cp -a ${HDIR}/${SAVED_MODELS_DIR}/*    ${WDIR}/${SAVED_MODELS_DIR}
+
+# Unzip input data
+echo "[JOB] Unzipping input data..."
+gunzip -v ${WDIR}/${INPUT_DIR}/*.csv.gz
 
 # Setup PyTorch environment and run
 echo "[JOB] Creating PyTorch virtual environment..."

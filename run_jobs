@@ -31,4 +31,6 @@ echo $JOB_OUTPUT
 # Send job ID to monitor script
 JOB_ID=$(echo $JOB_OUTPUT | grep -E -o -a -m 1 -h "[0-9]+")
 bash monitor $JOB_ID
+
+echo "watch -n 2 tail -n 20 slurm_output/${JOB_ID}_0000.out"
 watch -n 2 "tail -n 20 slurm_output/${JOB_ID}_0000.out"
