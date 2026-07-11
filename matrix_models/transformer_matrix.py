@@ -10,7 +10,6 @@ from torch.utils.data import Dataset, DataLoader
 
 import os
 import sys
-import io
 import math
 import timeit
 import datetime
@@ -46,8 +45,8 @@ JOB_ID = os.environ.get("SLURM_JOB_ID", "x")
 # Simulate sys.argv in IPYNB
 try:
     get_ipython() # pyright: ignore[reportUndefinedVariable]
-    sys.argv = ["transformer_matrix.ipynb"]
-    # sys.argv = ["transformer_matrix.ipynb", "transformer_configs/test_config.json"]
+    # sys.argv = ["transformer_matrix.ipynb"]
+    sys.argv = ["transformer_matrix.ipynb", "transformer_configs/matrixStateData_2000000_10_iter0_hs64.json"]
 except NameError:
     pass
 
@@ -123,7 +122,7 @@ else:
 
     # --- DATASET PARAMETERS ---
     n = 20
-    data_len = 200000
+    data_len = 20000
     iter_index = 0
     data_name = f"matrixStateData_{data_len}_{n}"
 
@@ -135,7 +134,7 @@ else:
 
     # --- MODEL HYPER PARAMETERS ---
     output_size = 2
-    hidden_size = 32
+    hidden_size = 128
     num_layers = 4
     num_heads = 8
     save_model_subdir = f"{data_name}_iter{iter_index}_hs{hidden_size}"
@@ -143,8 +142,8 @@ else:
 
     # Parameters for saved weights
     weight_file = None
-    weight_file_job_id = None
-    # weight_file = f"saved_transformer_models/{data_name}_iter{iter_index}_hs{hidden_size}/{data_name}_iter{iter_index}_ID{weight_file_job_id}_ep{start_epoch:04d}.pt"
+    weight_file_job_id = "x"
+    weight_file = f"saved_transformer_models/{data_name}_iter{iter_index}_hs{hidden_size}/{data_name}_iter{iter_index}_ID{weight_file_job_id}_ep{start_epoch:04d}.pt"
 
 
     # --- TRAINING PARAMETERS ---
@@ -301,11 +300,8 @@ def preprocess_shuffling(data_file_name: str, combined_file: str, iter_index: in
 # %%
 class PIIStateDataset(Dataset):
     def __init__(self, df: pd.DataFrame) -> None:
-        # Join iteration data with trial data based on the unique program+trial index
-        self.df = df
-
         # Obtain the preference matrix and unflatten preferences into n^2 x 2 for each iteration
-        pref_matrix = slice_columns(self.df, "l0", f"r{n*n - 1}")
+        pref_matrix = slice_columns(df, "l0", f"r{n*n - 1}")
         pref_tensor = torch.from_numpy(pref_matrix.values).float()
         seq_prefs = pref_tensor.unflatten(1, (-1, 2))
 
@@ -316,16 +312,29 @@ class PIIStateDataset(Dataset):
         bit_flags_size = seq_prefs.size()[:-1] + torch.Size([5])
         self.seq_features = torch.cat((seq_prefs, torch.zeros(bit_flags_size)), dim=2)
 
-        # For each iteration, get each list of indices,
-        # and set the flag to 1 at the respective column
-        for row, pair_indices_lists in slice_columns(self.df, "matchIndices", "nm2Indices").iterrows():
-            assert isinstance(row, int)
-            for col, pair_indices_strs in enumerate(pair_indices_lists):
-                pair_indices: list[int] = list_from_str(pair_indices_strs, int)
-                self.seq_features[row, pair_indices, col + 2] = 1
+        pairs_df = slice_columns(df, "matchIndices", "nm2Indices")
+        flattened_seq_features = self.seq_features.flatten(0, 1)
+
+        # TODO: Only need to check empty indices for nm2
+        for pair_type_index, col_name in enumerate(pairs_df):
+            col = df[col_name]
+            col = col.str.strip("[]")
+            empty_indices = col.index[col.apply(len) == 0]
+            col = col.str.split(", ")
+            col.iloc[empty_indices] = [[]] * len(empty_indices)
+            col = col.apply(np.int64)
+
+            indices = (col.index * n**2 + col)
+            indices.drop(indices.index[empty_indices], inplace=True)
+
+            flattened_pair_indices = indices.explode().to_numpy(np.int64)
+
+            flattened_seq_features[flattened_pair_indices, pair_type_index + 2] = 1
+
+        self.seq_features = flattened_seq_features.unflatten(0, (-1, n**2))
 
         # Convert the 0/1 converge labels to one hots
-        converges = torch.tensor(self.df["converges"], dtype=torch.long)
+        converges = torch.tensor(df["converges"], dtype=torch.long)
         self.convergesOneHot = nn.functional.one_hot(converges, 2).float()
 
     def __len__(self):
@@ -335,17 +344,18 @@ class PIIStateDataset(Dataset):
         return self.seq_features[idx], self.convergesOneHot[idx]
 
     def __getitems__(self, indices) -> list[tuple]:
-        return [(self.seq_features[i], self.convergesOneHot[i]) for i in range(len(indices))]
+        return [(self.seq_features[i], self.convergesOneHot[i]) for i in indices]
 
-    # TODO: Use this over dataloader
+    # TODO: Try using this over dataloader
     def get_batch(self, indices) -> tuple:
         return self.seq_features[indices], self.convergesOneHot[indices]
 
 # %%
 class DataLoaderWrapper:
-    def __init__(self, data_file: str, partition_size: int, batch_size: int, data_ratio: float, offset_ratio: float):
+    def __init__(self, data_file: str, partition_size: int, batch_size: int, data_ratio: float, offset_ratio: float, shuffle: bool):
         self.data_file = data_file
         self.batch_size = batch_size
+        self.shuffle = shuffle
 
         with open(self.data_file, "rb") as f:
             full_data_len = sum(1 for _ in f) - 1
@@ -361,7 +371,7 @@ class DataLoaderWrapper:
         self.num_partitions = math.ceil(self.data_len / self.partition_size)
 
     def __len__(self):
-        return math.ceil(self.data_len / self.batch_size)
+        return math.ceil(self.partition_size / self.batch_size) * self.num_partitions
 
     def get_data_len(self):
         return self.data_len
@@ -371,29 +381,57 @@ class DataLoaderWrapper:
 
         for partition_idx in partition_order:
             data_loader = self._get_partition(partition_idx)
+            # return data_loader
             for batch in data_loader:
                 yield batch
             del data_loader # TODO: Consider triggering garbage collection after this?
 
     def _get_partition(self, partition_idx):
+        nrows = self.partition_size
+        if partition_idx == self.num_partitions - 1:
+            nrows = self.data_len - partition_idx * self.partition_size
+
         df = pd.read_csv(
             self.data_file,
             skiprows=range(1, self.start_row + self.partition_size * partition_idx + 1),
-            nrows=self.partition_size
+            nrows=nrows
         )
         df = df.reset_index(drop=True)
 
         dataset = PIIStateDataset(df)
-        return DataLoader(dataset, batch_size=self.batch_size, shuffle=True)
+        # display(dataset[0:65])
+        return DataLoader(dataset, batch_size=self.batch_size, shuffle=self.shuffle)
 
-# if data_ratio + offset_ratio > 1:
-#     raise ValueError("provided data and offset ratios are out of bounds")
+# %%
+# BENCHMARKING: Dataset
+# df = pd.read_csv("matrix_data/matrixStateData_200000_20_combine_iter_0.csv")
+# num_trials = 30
 
-# # Get the appropriate percentage of the data
-# start_row = int(offset_ratio * len(iter_df))
-# end_row = int((data_ratio + offset_ratio) * len(iter_df))
+# start_wtime = timeit.default_timer()
 
-# iter_df = iter_df.iloc[start_row : end_row]
+# for _ in range(num_trials):
+#     dataset = PIIStateDataset(df)
+
+# end_wtime = timeit.default_timer()
+
+# print(end_wtime - start_wtime)
+# print((end_wtime - start_wtime) / num_trials)
+
+# # ORIGINAL
+# # 30x: 354.7033492710325
+# # Avg: 11.823444975701083
+
+# # Pandas string series to list series
+# # 30x: 192.64214746496873
+# # Avg: 6.421404915498957
+
+# # Flatten -> unflatten
+# # 10x: 54.93283691990655
+# # Avg: 5.493283691990655
+
+# # Only find empty indices once
+# # 30x: 157.72345656598918
+# # Avg: 5.257448552199639
 
 # %%
 logging.info(f"Preprocessing n={n} data, of length {data_len}, at iteration index {iter_index}")
@@ -409,27 +447,13 @@ if not os.path.exists(preprocessed_file):
     logging.info(f"Shuffling data")
     preprocessed_file = preprocess_shuffling(data_file_name, combined_file, iter_index)
 
-train_dataloader = DataLoaderWrapper(preprocessed_file, PARTITION_SIZE, batch_size, train_ratio, 0)
-test_dataloader = DataLoaderWrapper(preprocessed_file, PARTITION_SIZE, batch_size, test_ratio, train_ratio)
+train_dataloader = DataLoaderWrapper(preprocessed_file, PARTITION_SIZE, batch_size, train_ratio, 0, shuffle=True)
+test_dataloader = DataLoaderWrapper(preprocessed_file, PARTITION_SIZE, batch_size, test_ratio, train_ratio, shuffle=False)
 
 logging.info(f"Preprocessing done!")
 
 # train_dataloader = CustomDataLoader(training_data, batch_size)
 # test_dataloader = CustomDataLoader(test_data, batch_size)
-
-# %%
-# iterator = train_dataloader.get_iterator()
-# next(iterator)
-
-# %%
-# i = 1
-# for x, y in iterator:
-#     x += 1
-#     y += 1
-
-#     i += 1
-#     if i == (PARTITION_SIZE / batch_size) - 1:
-#         break
 
 # %%
 # %reset_selective -f "(^model$|^loss_fn$|^optimizer$|^scheduler$)"
@@ -650,7 +674,12 @@ def train_loop(dataloader: DataLoaderWrapper, model, loss_fn, optimizer):
     num_batches = len(dataloader)
     train_loss, correct = 0, 0
 
+    batch_num = 0
+    data_num = 0
     for sequential_X, y in dataloader.get_iterator():
+        batch_num += 1
+        data_num += sequential_X.size(0)
+
         sequential_X = sequential_X.to(device)
         y = y.to(device)
 
