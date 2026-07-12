@@ -45,8 +45,8 @@ JOB_ID = os.environ.get("SLURM_JOB_ID", "x")
 # Simulate sys.argv in IPYNB
 try:
     get_ipython() # pyright: ignore[reportUndefinedVariable]
-    # sys.argv = ["transformer_matrix.ipynb"]
-    sys.argv = ["transformer_matrix.ipynb", "transformer_configs/matrixStateData_2000000_10_iter0_hs64.json"]
+    sys.argv = ["transformer_matrix.ipynb"]
+    # sys.argv = ["transformer_matrix.ipynb", "transformer_configs/matrixStateData_2000000_20_iter0_hs64.json"]
 except NameError:
     pass
 
@@ -117,12 +117,12 @@ else:
     # --- DATA PREPROCESSING PARAMETERS ---
     BUFFER_SIZE    = 2 << 19 # 1 MB
     CSV_CHUNK_SIZE = 1000000
-    PARTITION_SIZE = 200000
+    PARTITION_SIZE = 20000
 
 
     # --- DATASET PARAMETERS ---
     n = 20
-    data_len = 20000
+    data_len = 200000
     iter_index = 0
     data_name = f"matrixStateData_{data_len}_{n}"
 
@@ -352,10 +352,10 @@ class PIIStateDataset(Dataset):
 
 # %%
 class DataLoaderWrapper:
-    def __init__(self, data_file: str, partition_size: int, batch_size: int, data_ratio: float, offset_ratio: float, shuffle: bool):
+    def __init__(self, data_file: str, partition_size: int, batch_size: int, data_ratio: float, offset_ratio: float, is_training: bool):
         self.data_file = data_file
         self.batch_size = batch_size
-        self.shuffle = shuffle
+        self.is_training = is_training
 
         with open(self.data_file, "rb") as f:
             full_data_len = sum(1 for _ in f) - 1
@@ -370,6 +370,15 @@ class DataLoaderWrapper:
         self.partition_size = min(partition_size, self.data_len)
         self.num_partitions = math.ceil(self.data_len / self.partition_size)
 
+        os.makedirs("saved_transformer_partitions", exist_ok=True)
+        self.train_test_str = "train" if self.is_training else "test"
+
+        for i in range(self.num_partitions):
+            dataloader = self._create_partition(i)
+            partition_file = f"saved_transformer_partitions/{JOB_ID}_{self.train_test_str}_{i}.dl"
+            with open(partition_file, "wb", buffering=BUFFER_SIZE) as f:
+                torch.save(dataloader, f)
+
     def __len__(self):
         return math.ceil(self.partition_size / self.batch_size) * self.num_partitions
 
@@ -377,16 +386,24 @@ class DataLoaderWrapper:
         return self.data_len
 
     def get_iterator(self):
-        partition_order = NP_RAND_GEN.permutation(self.num_partitions)
+        if self.is_training:
+            partition_order = NP_RAND_GEN.permutation(self.num_partitions)
+        else:
+            partition_order = np.arange(self.num_partitions)
 
         for partition_idx in partition_order:
             data_loader = self._get_partition(partition_idx)
-            # return data_loader
             for batch in data_loader:
                 yield batch
             del data_loader # TODO: Consider triggering garbage collection after this?
 
     def _get_partition(self, partition_idx):
+        partition_file = f"saved_transformer_partitions/{JOB_ID}_{self.train_test_str}_{partition_idx}.dl"
+        with open(partition_file, "rb", buffering=BUFFER_SIZE) as f:
+            dataloader: DataLoader = torch.load(f, weights_only=False)
+        return dataloader
+
+    def _create_partition(self, partition_idx):
         nrows = self.partition_size
         if partition_idx == self.num_partitions - 1:
             nrows = self.data_len - partition_idx * self.partition_size
@@ -399,8 +416,7 @@ class DataLoaderWrapper:
         df = df.reset_index(drop=True)
 
         dataset = PIIStateDataset(df)
-        # display(dataset[0:65])
-        return DataLoader(dataset, batch_size=self.batch_size, shuffle=self.shuffle)
+        return DataLoader(dataset, batch_size=self.batch_size, shuffle=self.is_training)
 
 # %%
 # BENCHMARKING: Dataset
@@ -447,13 +463,37 @@ if not os.path.exists(preprocessed_file):
     logging.info(f"Shuffling data")
     preprocessed_file = preprocess_shuffling(data_file_name, combined_file, iter_index)
 
-train_dataloader = DataLoaderWrapper(preprocessed_file, PARTITION_SIZE, batch_size, train_ratio, 0, shuffle=True)
-test_dataloader = DataLoaderWrapper(preprocessed_file, PARTITION_SIZE, batch_size, test_ratio, train_ratio, shuffle=False)
+train_dataloader = DataLoaderWrapper(preprocessed_file, PARTITION_SIZE, batch_size, train_ratio, 0, is_training=True)
+test_dataloader = DataLoaderWrapper(preprocessed_file, PARTITION_SIZE, batch_size, test_ratio, train_ratio, is_training=False)
 
 logging.info(f"Preprocessing done!")
 
 # train_dataloader = CustomDataLoader(training_data, batch_size)
 # test_dataloader = CustomDataLoader(test_data, batch_size)
+
+# %%
+# # BENCHMARKING: Dataset (n=20, size=200000, partition_size=20000)
+# num_trials = 30
+# new_dataloader = DataLoaderWrapper(preprocessed_file, PARTITION_SIZE, batch_size, train_ratio, 0, is_training=True)
+
+# start_wtime = timeit.default_timer()
+
+# for _ in range(num_trials):
+#     for _ in new_dataloader.get_iterator():
+#         pass
+
+# end_wtime = timeit.default_timer()
+
+# print(end_wtime - start_wtime)
+# print((end_wtime - start_wtime) / num_trials)
+
+# # ORIGINAL
+# # 30x: 327.79994397005066
+# # Avg: 10.926664799001689
+
+# # Pre-generate and pickle
+# # 30x: 25.349475977011025
+# # Avg: 0.8449825325670342
 
 # %%
 # %reset_selective -f "(^model$|^loss_fn$|^optimizer$|^scheduler$)"
