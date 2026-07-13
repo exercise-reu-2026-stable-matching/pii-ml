@@ -10,7 +10,7 @@ matrix_models/*matrix_data/matrixStateData_200000*_20_trial.csv.gz
 matrix_models/saved_transformer_models/**/*.pt
 
 # Partition files
-matrix_models/saved_transformer_partitions/*.dl
+matrix_models/saved_transformer_partitions/*.ds
 
 # Slurm output
 slurm_output/*
