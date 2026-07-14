@@ -61,10 +61,10 @@ if len(sys.argv) > 1:
     assert isinstance(config, dict)
 
     # --- HYPER PARAMETERS ---
-    batch_size = config["batch_size"]
-    learning_rate = config["learning_rate"]
-    epochs = config["epochs"]
-    start_epoch = config["start_epoch"]
+    BATCH_SIZE = config["batch_size"]
+    LEARNING_RATE = config["learning_rate"]
+    EPOCHS = config["epochs"]
+    START_EPOCH = config["start_epoch"]
 
 
     # --- DATA PREPROCESSING PARAMETERS ---
@@ -74,44 +74,44 @@ if len(sys.argv) > 1:
 
 
     # --- DATASET PARAMETERS ---
-    n = config["n"]
-    data_len = config["data_len"]
-    iter_index = config["iter_index"]
-    data_name = config.get("data_name", f"matrixStateData_{data_len}_{n}")
+    N = config["n"]
+    DATA_LEN = config["data_len"]
+    ITER_INDEX = config["iter_index"]
+    DATA_NAME = config.get("data_name", f"matrixStateData_{DATA_LEN}_{N}")
 
     # Scalar multiple for ratios to get 200k exactly divisible by 64: 0.99968
-    train_ratio = config["train_ratio"]
-    test_ratio = config["test_ratio"]
+    TRAIN_RATIO = config["train_ratio"]
+    TEST_RATIO = config["test_ratio"]
 
-    shuffle_rand_seed = config["shuffle_rand_seed"]
+    SHUFFLE_RAND_SEED = config["shuffle_rand_seed"]
 
 
     # --- MODEL HYPER PARAMETERS ---
-    output_size = config["output_size"]
-    hidden_size = config["hidden_size"]
-    num_layers = config["num_layers"]
-    num_heads = config["num_heads"]
-    save_model_subdir = config.get("save_model_subdir", f"{data_name}_iter{iter_index}_hs{hidden_size}")
-    torch_rand_seed = config.get("torch_rand_seed", torch.seed())
+    OUTPUT_SIZE = config["output_size"]
+    HIDDEN_SIZE = config["hidden_size"]
+    NUM_LAYERS = config["num_layers"]
+    NUM_HEADS = config["num_heads"]
+    SAVE_MODEL_SUBDIR = config.get("save_model_subdir", f"{DATA_NAME}_iter{ITER_INDEX}_hs{HIDDEN_SIZE}")
+    TORCH_RAND_SEED = config.get("torch_rand_seed", torch.seed())
 
     # Parameters for saved weights
-    weight_file_job_id = config.get("weight_file_job_id")
-    weight_file = config.get("weight_file")
+    WEIGHT_FILE_JOB_ID = config.get("weight_file_job_id")
+    WEIGHT_FILE = config.get("weight_file")
 
-    if weight_file is None and weight_file_job_id is not None:
-        weight_file = f"saved_transformer_models/{data_name}_iter{iter_index}_hs{hidden_size}/{data_name}_iter{iter_index}_ID{weight_file_job_id}_ep{start_epoch:04d}.pt"
+    if WEIGHT_FILE is None and WEIGHT_FILE_JOB_ID is not None:
+        WEIGHT_FILE = f"saved_transformer_models/{DATA_NAME}_iter{ITER_INDEX}_hs{HIDDEN_SIZE}/{DATA_NAME}_iter{ITER_INDEX}_ID{WEIGHT_FILE_JOB_ID}_ep{START_EPOCH:04d}.pt"
 
     # --- TRAINING PARAMETERS ---
-    print_freq = config["print_freq"]
-    checkpoint_freq = config["checkpoint_freq"]
+    PRINT_FREQ = config["print_freq"]
+    CHECKPOINT_FREQ = config["checkpoint_freq"]
 
 # OTHERWISE, use hard-coded parameters
 else:
     # --- HYPER PARAMETERS ---
-    batch_size = 64
-    learning_rate = 1e-3
-    epochs = 25
-    start_epoch = 0
+    BATCH_SIZE = 64
+    LEARNING_RATE = 1e-3
+    EPOCHS = 25
+    START_EPOCH = 0
 
 
     # --- DATA PREPROCESSING PARAMETERS ---
@@ -121,72 +121,72 @@ else:
 
 
     # --- DATASET PARAMETERS ---
-    n = 20
-    data_len = 200000
-    iter_index = 0
-    data_name = f"matrixStateData_{data_len}_{n}"
+    N = 20
+    DATA_LEN = 200000
+    ITER_INDEX = 0
+    DATA_NAME = f"matrixStateData_{DATA_LEN}_{N}"
 
     # Scalar multiple for ratios to get 200k exactly divisible by 64: 0.99968
-    train_ratio = 0.75
-    test_ratio = 0.25
+    TRAIN_RATIO = 0.75
+    TEST_RATIO = 0.25
 
-    shuffle_rand_seed = 1
+    SHUFFLE_RAND_SEED = 1
 
     # --- MODEL HYPER PARAMETERS ---
-    output_size = 2
-    hidden_size = 128
-    num_layers = 4
-    num_heads = 8
-    save_model_subdir = f"{data_name}_iter{iter_index}_hs{hidden_size}"
-    torch_rand_seed = torch.seed()
+    OUTPUT_SIZE = 2
+    HIDDEN_SIZE = 128
+    NUM_LAYERS = 4
+    NUM_HEADS = 8
+    SAVE_MODEL_SUBDIR = f"{DATA_NAME}_iter{ITER_INDEX}_hs{HIDDEN_SIZE}"
+    TORCH_RAND_SEED = torch.seed()
 
     # Parameters for saved weights
-    weight_file = None
-    weight_file_job_id = "x"
-    weight_file = f"saved_transformer_models/{data_name}_iter{iter_index}_hs{hidden_size}/{data_name}_iter{iter_index}_ID{weight_file_job_id}_ep{start_epoch:04d}.pt"
+    WEIGHT_FILE = None
+    WEIGHT_FILE_JOB_ID = "x"
+    WEIGHT_FILE = f"saved_transformer_models/{DATA_NAME}_iter{ITER_INDEX}_hs{HIDDEN_SIZE}/{DATA_NAME}_iter{ITER_INDEX}_ID{WEIGHT_FILE_JOB_ID}_ep{START_EPOCH:04d}.pt"
 
 
     # --- TRAINING PARAMETERS ---
-    print_freq = 1
-    checkpoint_freq = 10
+    PRINT_FREQ = 1
+    CHECKPOINT_FREQ = 10
 
-NP_RAND_GEN = np.random.default_rng(shuffle_rand_seed)
+NP_RAND_GEN = np.random.default_rng(SHUFFLE_RAND_SEED)
 
 # %%
-os.makedirs(os.path.join("saved_transformer_models", save_model_subdir), exist_ok=True)
+os.makedirs(os.path.join("saved_transformer_models", SAVE_MODEL_SUBDIR), exist_ok=True)
 
 # Save all hyper parameters to a JSON file
-with open(f"saved_transformer_models/{save_model_subdir}/{data_name}_iter{iter_index}_ID{JOB_ID}.json", "w") as f:
+with open(f"saved_transformer_models/{SAVE_MODEL_SUBDIR}/{DATA_NAME}_iter{ITER_INDEX}_ID{JOB_ID}.json", "w") as f:
     json.dump(
         {
-            "batch_size": batch_size,
-            "learning_rate": learning_rate,
-            "epochs": epochs,
+            "batch_size": BATCH_SIZE,
+            "learning_rate": LEARNING_RATE,
+            "epochs": EPOCHS,
             
             "buffer_size": BUFFER_SIZE,
             "csv_chunk_size": CSV_CHUNK_SIZE,
             "partition_size": PARTITION_SIZE,
 
-            "n": n,
-            "data_len": data_len,
-            "iter_index": iter_index,
-            "data_name": data_name,
-            "train_ratio": train_ratio,
-            "test_ratio": test_ratio,
-            "shuffle_rand_seed": shuffle_rand_seed,
+            "n": N,
+            "data_len": DATA_LEN,
+            "iter_index": ITER_INDEX,
+            "data_name": DATA_NAME,
+            "train_ratio": TRAIN_RATIO,
+            "test_ratio": TEST_RATIO,
+            "shuffle_rand_seed": SHUFFLE_RAND_SEED,
 
-            "output_size": output_size,
-            "hidden_size": hidden_size,
-            "num_layers": num_layers,
-            "num_heads": num_heads,
-            "save_model_subdir": save_model_subdir,
-            "torch_rand_seed": torch_rand_seed,
-            "start_epoch": start_epoch,
-            "weight_file_job_id": weight_file_job_id,
-            "weight_file": weight_file,
+            "output_size": OUTPUT_SIZE,
+            "hidden_size": HIDDEN_SIZE,
+            "num_layers": NUM_LAYERS,
+            "num_heads": NUM_HEADS,
+            "save_model_subdir": SAVE_MODEL_SUBDIR,
+            "torch_rand_seed": TORCH_RAND_SEED,
+            "start_epoch": START_EPOCH,
+            "weight_file_job_id": WEIGHT_FILE_JOB_ID,
+            "weight_file": WEIGHT_FILE,
 
-            "print_freq": print_freq,
-            "checkpoint_freq": checkpoint_freq,
+            "print_freq": PRINT_FREQ,
+            "checkpoint_freq": CHECKPOINT_FREQ,
         },
         f
     )
@@ -301,7 +301,7 @@ def preprocess_shuffling(data_file_name: str, combined_file: str, iter_index: in
 class PIIStateDataset(Dataset):
     def __init__(self, df: pd.DataFrame) -> None:
         # Obtain the preference matrix and unflatten preferences into n^2 x 2 for each iteration
-        pref_matrix = slice_columns(df, "l0", f"r{n*n - 1}")
+        pref_matrix = slice_columns(df, "l0", f"r{N*N - 1}")
         pref_tensor = torch.from_numpy(pref_matrix.values).float()
         seq_prefs = pref_tensor.unflatten(1, (-1, 2))
 
@@ -324,14 +324,14 @@ class PIIStateDataset(Dataset):
             col.iloc[empty_indices] = [[]] * len(empty_indices)
             col = col.apply(np.int64)
 
-            indices = (col.index * n**2 + col)
+            indices = (col.index * N**2 + col)
             indices.drop(indices.index[empty_indices], inplace=True)
 
             flattened_pair_indices = indices.explode().to_numpy(np.int64)
 
             flattened_seq_features[flattened_pair_indices, pair_type_index + 2] = 1
 
-        self.seq_features = flattened_seq_features.unflatten(0, (-1, n**2))
+        self.seq_features = flattened_seq_features.unflatten(0, (-1, N**2))
 
         # Convert the 0/1 converge labels to one hots
         converges = torch.tensor(df["converges"], dtype=torch.long)
@@ -346,7 +346,6 @@ class PIIStateDataset(Dataset):
     def __getitems__(self, indices) -> list[tuple]:
         return [(self.seq_features[i], self.convergesOneHot[i]) for i in indices]
 
-    # TODO: Try using this over dataloader
     def get_batch(self, indices) -> tuple:
         return self.seq_features[indices], self.convergesOneHot[indices]
 
@@ -458,23 +457,23 @@ class DataLoaderWrapper:
 # # Avg: 5.257448552199639
 
 # %%
-logging.info(f"Preprocessing n={n} data, of length {data_len}, at iteration index {iter_index}")
+logging.info(f"Preprocessing n={N} data, of length {DATA_LEN}, at iteration index {ITER_INDEX}")
 
-data_file_name = f"matrix_data/{data_name}"
-preprocessed_file = f"{data_file_name}_combine_iter_{iter_index}.csv"
+data_file_name = f"matrix_data/{DATA_NAME}"
+preprocessed_file = f"{data_file_name}_combine_iter_{ITER_INDEX}.csv"
 
 if not os.path.exists(preprocessed_file):
     logging.info(f"Sampling iteration index from data")
-    sample_iter_file = preprocess_sampling(data_file_name, iter_index)
+    sample_iter_file = preprocess_sampling(data_file_name, ITER_INDEX)
     logging.info(f"Joining iteration and trial data files")
-    combined_file = preprocess_joining(data_file_name, sample_iter_file, iter_index)
+    combined_file = preprocess_joining(data_file_name, sample_iter_file, ITER_INDEX)
     logging.info(f"Shuffling data")
-    preprocessed_file = preprocess_shuffling(data_file_name, combined_file, iter_index)
+    preprocessed_file = preprocess_shuffling(data_file_name, combined_file, ITER_INDEX)
 
 logging.info(f"Generating partitions")
 
-train_dataloader = DataLoaderWrapper(preprocessed_file, PARTITION_SIZE, batch_size, train_ratio, 0, is_training=True)
-test_dataloader = DataLoaderWrapper(preprocessed_file, PARTITION_SIZE, batch_size, test_ratio, train_ratio, is_training=False)
+train_dataloader = DataLoaderWrapper(preprocessed_file, PARTITION_SIZE, BATCH_SIZE, TRAIN_RATIO, 0, is_training=True)
+test_dataloader = DataLoaderWrapper(preprocessed_file, PARTITION_SIZE, BATCH_SIZE, TEST_RATIO, TRAIN_RATIO, is_training=False)
 
 logging.info(f"Preprocessing done!")
 
@@ -494,17 +493,17 @@ logging.info(f"Preprocessing done!")
 # print(end_wtime - start_wtime)
 # print((end_wtime - start_wtime) / num_trials)
 
-# ORIGINAL
-# 30x: 327.79994397005066
-# Avg: 10.926664799001689
+# # ORIGINAL
+# # 30x: 327.79994397005066
+# # Avg: 10.926664799001689
 
-# Pre-generate and pickle
-# 30x: 25.349475977011025
-# Avg: 0.8449825325670342
+# # Pre-generate and pickle
+# # 30x: 25.349475977011025
+# # Avg: 0.8449825325670342
 
-# Use custom get_batch over DataLoader
-# 30x: 18.63490589801222
-# Avg: 0.6211635299337407
+# # Use custom get_batch over DataLoader
+# # 30x: 18.63490589801222
+# # Avg: 0.6211635299337407
 
 # %%
 # %reset_selective -f "(^model$|^loss_fn$|^optimizer$|^scheduler$)"
@@ -678,23 +677,23 @@ class Transformer(nn.Module):
 
 # %%
 # Set the random seed
-torch.manual_seed(torch_rand_seed)
+torch.manual_seed(TORCH_RAND_SEED)
 
 SEQ_FEAT_LENGTH = 7
 
 # Create model
-model = Transformer(SEQ_FEAT_LENGTH, output_size=output_size, hidden_size=hidden_size, 
-                            num_layers=num_layers, num_heads=num_heads).to(device)
+model = Transformer(SEQ_FEAT_LENGTH, output_size=OUTPUT_SIZE, hidden_size=HIDDEN_SIZE, 
+                            num_layers=NUM_LAYERS, num_heads=NUM_HEADS).to(device)
 
-if weight_file is not None:
-    model.load_state_dict(torch.load(weight_file))
+if WEIGHT_FILE is not None:
+    model.load_state_dict(torch.load(WEIGHT_FILE))
 
 logging.info(
 f"""Created Transformer model
-    output_size = {output_size}
-    hidden_size = {hidden_size}
-    num_layers = {num_layers}
-    num_heads = {num_heads}"""
+    output_size = {OUTPUT_SIZE}
+    hidden_size = {HIDDEN_SIZE}
+    num_layers = {NUM_LAYERS}
+    num_heads = {NUM_HEADS}"""
 )
 
 # %%
@@ -704,7 +703,7 @@ loss_fn = nn.BCEWithLogitsLoss()
 
 # optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
 # optimizer = torch.optim.ASGD(model.parameters(), lr=learning_rate)
-optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
 # optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
 
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=10, min_lr=1e-3)
@@ -793,26 +792,26 @@ def plot_data_to_csv(learning_rates, train_losses, test_losses, train_accuracies
         "test_accuracy": test_accuracies[0:local_epoch],
     })
 
-    df.to_csv(f"transformer_matrix_plot_data/{data_name}_iter{iter_index}_ID{JOB_ID}.csv", index=False)
+    df.to_csv(f"transformer_matrix_plot_data/{DATA_NAME}_iter{ITER_INDEX}_ID{JOB_ID}.csv", index=False)
 
 def save_model(epoch: int, sub_directory: str):
-    file_name = f"{data_name}_iter{iter_index}_ID{JOB_ID}_ep{epoch:04d}"
+    file_name = f"{DATA_NAME}_iter{ITER_INDEX}_ID{JOB_ID}_ep{epoch:04d}"
     torch.save(model.state_dict(), f"saved_transformer_models/{sub_directory}/{file_name}.pt")
 
 def format_seconds(n):
     return str(datetime.timedelta(seconds=n))
 
 # %%
-learning_rates = np.zeros(epochs, dtype=np.float32)
-train_losses, train_accuracies = np.zeros(epochs, dtype=np.float32), np.zeros(epochs, dtype=np.float32)
-test_losses, test_accuracies = np.zeros(epochs, dtype=np.float32), np.zeros(epochs, dtype=np.float32)
+learning_rates = np.zeros(EPOCHS, dtype=np.float32)
+train_losses, train_accuracies = np.zeros(EPOCHS, dtype=np.float32), np.zeros(EPOCHS, dtype=np.float32)
+test_losses, test_accuracies = np.zeros(EPOCHS, dtype=np.float32), np.zeros(EPOCHS, dtype=np.float32)
 
 logging.info("Starting training...")
 start_wtime = timeit.default_timer()
 
-for local_epoch in range(epochs):
+for local_epoch in range(EPOCHS):
     # Epoch including start epoch
-    global_epoch = start_epoch + local_epoch
+    global_epoch = START_EPOCH + local_epoch
 
     last_lr = scheduler.get_last_lr()
     learning_rates[local_epoch] = last_lr[0]
@@ -825,23 +824,23 @@ for local_epoch in range(epochs):
     test_losses[local_epoch] = test_loss
     test_accuracies[local_epoch] = test_accuracy
 
-    if local_epoch % print_freq == 0:
+    if local_epoch % PRINT_FREQ == 0:
         logging.info(
             f"Epoch {global_epoch + 1}  |   lr={last_lr}\n-------------------------------\n" +
             f"Train Error: \n Accuracy: {(100*train_accuracy):>0.1f}%, Avg loss: {train_loss:>8f} \n\n" +
             f"Test Error: \n Accuracy: {(100*test_accuracy):>0.1f}%, Avg loss: {test_loss:>8f} \n",
         )
 
-    if (global_epoch + 1) % checkpoint_freq == 0:
-        plot_data_to_csv(learning_rates, train_losses, test_losses, train_accuracies, test_accuracies, local_epoch, start_epoch)
-        save_model(global_epoch + 1, save_model_subdir)
+    if (global_epoch + 1) % CHECKPOINT_FREQ == 0:
+        plot_data_to_csv(learning_rates, train_losses, test_losses, train_accuracies, test_accuracies, local_epoch, START_EPOCH)
+        save_model(global_epoch + 1, SAVE_MODEL_SUBDIR)
 
-plot_data_to_csv(learning_rates, train_losses, test_losses, train_accuracies, test_accuracies, epochs, start_epoch)
-save_model(start_epoch + epochs, save_model_subdir)
+plot_data_to_csv(learning_rates, train_losses, test_losses, train_accuracies, test_accuracies, EPOCHS, START_EPOCH)
+save_model(START_EPOCH + EPOCHS, SAVE_MODEL_SUBDIR)
 
 stop_wtime = timeit.default_timer()
 total_wtime = round(stop_wtime - start_wtime)
-wtime_per_epoch = round(total_wtime / epochs)
+wtime_per_epoch = round(total_wtime / EPOCHS)
 
 logging.info(f"Training done in {format_seconds(total_wtime)}!")
 logging.info(f"Average epoch runtime: {format_seconds(wtime_per_epoch)}")
@@ -869,17 +868,17 @@ def plot_data(
     return fig, ax
 
 # %%
-x = np.arange(start_epoch, start_epoch + epochs)
+x = np.arange(START_EPOCH, START_EPOCH + EPOCHS)
 
 losses = np.vstack((train_losses, test_losses))
-loss_fig, loss_ax = plot_data(x, losses, ["Training", "Testing"], f"Loss vs. Epoch ({data_name})", "Loss")
-plt.savefig(f"transformer_matrix_plots/{data_name}_iter{iter_index}_ID{JOB_ID}_loss")
+loss_fig, loss_ax = plot_data(x, losses, ["Training", "Testing"], f"Loss vs. Epoch ({DATA_NAME})", "Loss")
+plt.savefig(f"transformer_matrix_plots/{DATA_NAME}_iter{ITER_INDEX}_ID{JOB_ID}_loss")
 
 accuracies = np.vstack((train_accuracies, test_accuracies)) * 100
-acc_fig, acc_ax = plot_data(x, accuracies, ["Training", "Testing"], f"Accuracy vs. Epoch ({data_name})", "Accuracy (%)")
-plt.savefig(f"transformer_matrix_plots/{data_name}_iter{iter_index}_ID{JOB_ID}_acc")
+acc_fig, acc_ax = plot_data(x, accuracies, ["Training", "Testing"], f"Accuracy vs. Epoch ({DATA_NAME})", "Accuracy (%)")
+plt.savefig(f"transformer_matrix_plots/{DATA_NAME}_iter{ITER_INDEX}_ID{JOB_ID}_acc")
 
-lr_fig, lr_ax = plot_data(x, learning_rates, title=f"Learning Rate vs. Epoch ({data_name})", ylabel="Learning Rate")
+lr_fig, lr_ax = plot_data(x, learning_rates, title=f"Learning Rate vs. Epoch ({DATA_NAME})", ylabel="Learning Rate")
 # plt.savefig(f"transformer_matrix_plots/{data_name}_iter{iter_index}_ID{JOB_ID}_lr")
 
 
