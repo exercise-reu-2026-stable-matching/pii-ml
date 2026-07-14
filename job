@@ -5,7 +5,7 @@
 #SBATCH --error=slurm_output/%A_%4a.err
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=1
-#SBATCH --time=24:00:00
+#SBATCH --time=72:00:00
 #SBATCH --array=0-0
 
 echo "[JOB] Running job on ${SLURMD_NODENAME}"
@@ -41,9 +41,10 @@ PLOT_DATA_DIR=transformer_matrix_plots
 # Create a temporary working directory on the node
 WDIR=/home/reujpasternak/tmp/pii-state-ml
 mkdir -p ${WDIR}
+cd ${WDIR}
 
 # Tidy up prior job files, except the virtual environment
-ls ${WDIR} | grep -xvF torch_venv | xargs rm -rf --
+ls ${WDIR} | grep -xvF torch_venv | xargs rm -vrf --
 
 # Create subdirectories within working directory
 mkdir -p ${WDIR}/${CONFIG_DIR}
@@ -51,7 +52,6 @@ mkdir -p ${WDIR}/${INPUT_DIR}
 mkdir -p ${WDIR}/${SAVED_MODELS_DIR}
 mkdir -p ${WDIR}/${PLOT_DIR}
 mkdir -p ${WDIR}/${PLOT_DATA_DIR}
-cd ${WDIR}
 
 # Copy set of input files to the working directory
 echo "[JOB] Copying input files to working directory..."
@@ -84,7 +84,7 @@ cp -a ${WDIR}/${SAVED_MODELS_DIR}/* ${HDIR}/${SAVED_MODELS_DIR}/
 
 echo "[JOB] Cleaning up local files"
 # Tidy up local files, except the virtual environment (save for future use)
-ls ${WDIR} | grep -xvF torch_venv | xargs rm -rf --
+ls ${WDIR} | grep -xvF torch_venv | xargs rm -vrf --
 
 echo "[JOB] Job ${SLURM_JOB_ID} complete!"
 
