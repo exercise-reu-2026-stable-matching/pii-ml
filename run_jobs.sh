@@ -23,7 +23,7 @@ else
     NODE_LIST_ARG=""
 fi
 
-JOB_OUTPUT=$(sbatch --partition ${PARTITION} ${NODE_LIST_ARG} job ${CONFIG_FILE})
+JOB_OUTPUT=$(sbatch --partition ${PARTITION} ${NODE_LIST_ARG} job.sh ${CONFIG_FILE})
 echo $JOB_OUTPUT
 
 # TODO: Watch the output in slurm_output instead of (or after) the job status
