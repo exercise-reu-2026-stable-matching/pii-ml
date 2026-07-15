@@ -44,6 +44,7 @@ mkdir -p ${WDIR}
 cd ${WDIR}
 
 # Tidy up prior job files, except the virtual environment
+echo "[JOB] Cleaning up any existing local files"
 ls ${WDIR} | grep -xvF torch_venv | xargs rm -vrf --
 
 # Create subdirectories within working directory
