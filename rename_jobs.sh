@@ -15,4 +15,4 @@ if [ ! -z "$3" ]
     TARGET_DIR=$3
 fi
 
-find $3 -name "*${1}*" -exec rename -v "${1}" "${2}" {} \;
+find $3 -name "*${1}*" -exec rename -v "${1}" "${1}_${2}" {} \;

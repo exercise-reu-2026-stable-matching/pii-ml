@@ -99,11 +99,7 @@ if len(sys.argv) > 1:
     TORCH_RAND_SEED = config.get("torch_rand_seed", torch.seed())
 
     # Parameters for saved weights
-    WEIGHT_FILE_JOB_ID = config.get("weight_file_job_id")
     WEIGHT_FILE = config.get("weight_file")
-
-    if WEIGHT_FILE is None and WEIGHT_FILE_JOB_ID is not None:
-        WEIGHT_FILE = f"saved_transformer_models/{DATA_NAME}_iter{ITER_INDEX}_hs{HIDDEN_SIZE}/{DATA_NAME}_iter{ITER_INDEX}_ID{WEIGHT_FILE_JOB_ID}_ep{START_EPOCH:04d}.pt"
 
     # --- TRAINING PARAMETERS ---
     PRINT_FREQ = config["print_freq"]
@@ -146,8 +142,6 @@ else:
 
     # Parameters for saved weights
     WEIGHT_FILE = None
-    WEIGHT_FILE_JOB_ID = "x"
-    WEIGHT_FILE = f"saved_transformer_models/{DATA_NAME}_iter{ITER_INDEX}_hs{HIDDEN_SIZE}/{DATA_NAME}_iter{ITER_INDEX}_ID{WEIGHT_FILE_JOB_ID}_ep{START_EPOCH:04d}.pt"
 
 
     # --- TRAINING PARAMETERS ---
@@ -157,10 +151,17 @@ else:
 NP_RAND_GEN = np.random.default_rng(SHUFFLE_RAND_SEED)
 
 # %%
+logging.info("Initializing process group")
+dist.init_process_group("gloo")
+RANK = dist.get_rank()
+WORLD_SIZE = dist.get_world_size()
+logging.info(f"Process group initialized. Rank: {RANK}/{WORLD_SIZE - 1}")
+
+# %%
 os.makedirs(os.path.join("saved_transformer_models", SAVE_MODEL_SUBDIR), exist_ok=True)
 
 # Save all hyper parameters to a JSON file
-with open(f"saved_transformer_models/{SAVE_MODEL_SUBDIR}/{DATA_NAME}_iter{ITER_INDEX}_ID{JOB_ID}.json", "w") as f:
+with open(f"saved_transformer_models/{SAVE_MODEL_SUBDIR}/{DATA_NAME}_iter{ITER_INDEX}_ID{JOB_ID}_n{N}_hs{HIDDEN_SIZE}_bs{BATCH_SIZE}_ws{WORLD_SIZE}.json", "w") as f:
     json.dump(
         {
             "batch_size": BATCH_SIZE,
@@ -186,7 +187,6 @@ with open(f"saved_transformer_models/{SAVE_MODEL_SUBDIR}/{DATA_NAME}_iter{ITER_I
             "save_model_subdir": SAVE_MODEL_SUBDIR,
             "torch_rand_seed": TORCH_RAND_SEED,
             "start_epoch": START_EPOCH,
-            "weight_file_job_id": WEIGHT_FILE_JOB_ID,
             "weight_file": WEIGHT_FILE,
 
             "print_freq": PRINT_FREQ,
@@ -194,13 +194,6 @@ with open(f"saved_transformer_models/{SAVE_MODEL_SUBDIR}/{DATA_NAME}_iter{ITER_I
         },
         f
     )
-
-# %%
-logging.info("Initializing process group")
-dist.init_process_group("gloo")
-RANK = dist.get_rank()
-WORLD_SIZE = dist.get_world_size()
-logging.info(f"Process group initialized. Rank: {RANK}/{WORLD_SIZE - 1}")
 
 # %%
 def list_from_str(str_list: str, fn_apply_to_items: Callable) -> list:
@@ -813,10 +806,10 @@ def plot_data_to_csv(learning_rates, train_losses, test_losses, train_accuracies
         "test_accuracy": test_accuracies[0:local_epoch],
     })
 
-    df.to_csv(f"transformer_matrix_plot_data/{DATA_NAME}_iter{ITER_INDEX}_ID{JOB_ID}.csv", index=False)
+    df.to_csv(f"transformer_matrix_plot_data/{DATA_NAME}_iter{ITER_INDEX}_ID{JOB_ID}_n{N}_hs{HIDDEN_SIZE}_bs{BATCH_SIZE}_ws{WORLD_SIZE}.csv", index=False)
 
 def save_model(model: DDP, epoch: int, sub_directory: str):
-    file_name = f"{DATA_NAME}_iter{ITER_INDEX}_ID{JOB_ID}_ep{epoch:04d}"
+    file_name = f"{DATA_NAME}_iter{ITER_INDEX}_ID{JOB_ID}_n{N}_hs{HIDDEN_SIZE}_bs{BATCH_SIZE}_ws{WORLD_SIZE}_ep{epoch:04d}"
     torch.save(model.module.state_dict(), f"saved_transformer_models/{sub_directory}/{file_name}.pt")
 
 def format_seconds(n):
@@ -905,14 +898,14 @@ if RANK == 0:
 
     losses = np.vstack((train_losses, test_losses)) # pyright: ignore[reportPossiblyUnboundVariable]
     loss_fig, loss_ax = plot_data(x, losses, ["Training", "Testing"], f"Loss vs. Epoch ({DATA_NAME})", "Loss")
-    plt.savefig(f"transformer_matrix_plots/{DATA_NAME}_iter{ITER_INDEX}_ID{JOB_ID}_loss")
+    plt.savefig(f"transformer_matrix_plots/{DATA_NAME}_iter{ITER_INDEX}_ID{JOB_ID}_n{N}_hs{HIDDEN_SIZE}_bs{BATCH_SIZE}_ws{WORLD_SIZE}_loss")
 
     accuracies = np.vstack((train_accuracies, test_accuracies)) * 100 # pyright: ignore[reportPossiblyUnboundVariable]
     acc_fig, acc_ax = plot_data(x, accuracies, ["Training", "Testing"], f"Accuracy vs. Epoch ({DATA_NAME})", "Accuracy (%)")
-    plt.savefig(f"transformer_matrix_plots/{DATA_NAME}_iter{ITER_INDEX}_ID{JOB_ID}_acc")
+    plt.savefig(f"transformer_matrix_plots/{DATA_NAME}_iter{ITER_INDEX}_ID{JOB_ID}_n{N}_hs{HIDDEN_SIZE}_bs{BATCH_SIZE}_ws{WORLD_SIZE}_acc")
 
     lr_fig, lr_ax = plot_data(x, learning_rates, title=f"Learning Rate vs. Epoch ({DATA_NAME})", ylabel="Learning Rate") # pyright: ignore[reportPossiblyUnboundVariable]
-    # plt.savefig(f"transformer_matrix_plots/{data_name}_iter{iter_index}_ID{JOB_ID}_lr")
+    # plt.savefig(f"transformer_matrix_plots/{data_name}_iter{iter_index}_ID{JOB_ID}_n{N}_hs{HIDDEN_SIZE}_bs{BATCH_SIZE}_ws{WORLD_SIZE}_lr")
 
 # %%
 # Clean up process group
