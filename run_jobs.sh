@@ -26,8 +26,6 @@ fi
 JOB_OUTPUT=$(sbatch --partition ${PARTITION} ${NODE_LIST_ARG} job.sh ${CONFIG_FILE})
 echo $JOB_OUTPUT
 
-# TODO: Watch the output in slurm_output instead of (or after) the job status
-
 # Send job ID to monitor script
 JOB_ID=$(echo $JOB_OUTPUT | grep -E -o -a -m 1 -h "[0-9]+")
 bash monitor $JOB_ID

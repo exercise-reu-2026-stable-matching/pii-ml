@@ -31,6 +31,8 @@ except AttributeError:
 logging.info("Running Torch on device: %s", device)
 
 # %%
+sys.stdout = open(sys.stdout.fileno(), mode='w', buffering=1)
+
 logging.basicConfig(
     format="[%(asctime)s] [%(levelname)-8s] %(message)s",
     level=logging.INFO,
@@ -815,7 +817,7 @@ def plot_data_to_csv(learning_rates, train_losses, test_losses, train_accuracies
 
 def save_model(model: DDP, epoch: int, sub_directory: str):
     file_name = f"{DATA_NAME}_iter{ITER_INDEX}_ID{JOB_ID}_ep{epoch:04d}"
-    torch.save(model.state_dict(), f"saved_transformer_models/{sub_directory}/{file_name}.pt")
+    torch.save(model.module.state_dict(), f"saved_transformer_models/{sub_directory}/{file_name}.pt")
 
 def format_seconds(n):
     return str(datetime.timedelta(seconds=n))
@@ -901,15 +903,15 @@ def plot_data(
 if RANK == 0:
     x = np.arange(START_EPOCH, START_EPOCH + EPOCHS)
 
-    losses = np.vstack((train_losses, test_losses))
+    losses = np.vstack((train_losses, test_losses)) # pyright: ignore[reportPossiblyUnboundVariable]
     loss_fig, loss_ax = plot_data(x, losses, ["Training", "Testing"], f"Loss vs. Epoch ({DATA_NAME})", "Loss")
     plt.savefig(f"transformer_matrix_plots/{DATA_NAME}_iter{ITER_INDEX}_ID{JOB_ID}_loss")
 
-    accuracies = np.vstack((train_accuracies, test_accuracies)) * 100
+    accuracies = np.vstack((train_accuracies, test_accuracies)) * 100 # pyright: ignore[reportPossiblyUnboundVariable]
     acc_fig, acc_ax = plot_data(x, accuracies, ["Training", "Testing"], f"Accuracy vs. Epoch ({DATA_NAME})", "Accuracy (%)")
     plt.savefig(f"transformer_matrix_plots/{DATA_NAME}_iter{ITER_INDEX}_ID{JOB_ID}_acc")
 
-    lr_fig, lr_ax = plot_data(x, learning_rates, title=f"Learning Rate vs. Epoch ({DATA_NAME})", ylabel="Learning Rate")
+    lr_fig, lr_ax = plot_data(x, learning_rates, title=f"Learning Rate vs. Epoch ({DATA_NAME})", ylabel="Learning Rate") # pyright: ignore[reportPossiblyUnboundVariable]
     # plt.savefig(f"transformer_matrix_plots/{data_name}_iter{iter_index}_ID{JOB_ID}_lr")
 
 # %%
