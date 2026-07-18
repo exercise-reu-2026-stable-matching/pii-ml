@@ -150,7 +150,7 @@ NP_RAND_GEN = np.random.default_rng(SHUFFLE_RAND_SEED)
 os.makedirs(os.path.join("saved_transformer_models", SAVE_MODEL_SUBDIR), exist_ok=True)
 
 # Save all hyper parameters to a JSON file
-with open(f"saved_transformer_models/{SAVE_MODEL_SUBDIR}/{DATA_NAME}_iter{ITER_INDEX}_ID{JOB_ID}_n{N}_hs{HIDDEN_SIZE}_bs{BATCH_SIZE}_ws{WORLD_SIZE}.json", "w") as f:
+with open(f"saved_transformer_models/{SAVE_MODEL_SUBDIR}/{DATA_NAME}_iter{ITER_INDEX}_ID{JOB_ID}_n{N}_hs{HIDDEN_SIZE}_bs{BATCH_SIZE}.json", "w") as f:
     json.dump(
         {
             "batch_size": BATCH_SIZE,
@@ -649,8 +649,6 @@ class Transformer(nn.Module):
         """
         bs = input_seq.size(0)
 
-        key_padding_mask = None
-
         input_embs = self.embed_ff(input_seq)
 
         # Add a unique embedding to each token embedding depending on its position in the sequence
@@ -660,6 +658,10 @@ class Transformer(nn.Module):
 
         # Concatenate a learnable output vector to the embeddings
         embs = torch.cat((self.out_vec.expand(bs, 1, -1), embs), dim=1)
+
+        # Mask the output vector's key for the purposes of attention
+        key_padding_mask = torch.zeros(bs, embs.size(1), dtype=torch.bool, device=embs.get_device())
+        key_padding_mask[:, 0] = 1
 
         # Pass the embeddings through each Transformer block
         for block in self.blocks:
@@ -785,10 +787,10 @@ def plot_data_to_csv(learning_rates, train_losses, test_losses, train_accuracies
         "test_accuracy": test_accuracies[0:local_epoch],
     })
 
-    df.to_csv(f"transformer_matrix_plot_data/{DATA_NAME}_iter{ITER_INDEX}_ID{JOB_ID}_n{N}_hs{HIDDEN_SIZE}_bs{BATCH_SIZE}_ws{WORLD_SIZE}.csv", index=False)
+    df.to_csv(f"transformer_matrix_plot_data/{DATA_NAME}_iter{ITER_INDEX}_ID{JOB_ID}_n{N}_hs{HIDDEN_SIZE}_bs{BATCH_SIZE}.csv", index=False)
 
 def save_model(epoch: int, sub_directory: str):
-    file_name = f"{DATA_NAME}_iter{ITER_INDEX}_ID{JOB_ID}_n{N}_hs{HIDDEN_SIZE}_bs{BATCH_SIZE}_ws{WORLD_SIZE}_ep{epoch:04d}"
+    file_name = f"{DATA_NAME}_iter{ITER_INDEX}_ID{JOB_ID}_n{N}_hs{HIDDEN_SIZE}_bs{BATCH_SIZE}_ep{epoch:04d}"
     torch.save(model.state_dict(), f"saved_transformer_models/{sub_directory}/{file_name}.pt")
 
 def format_seconds(n):
@@ -865,13 +867,13 @@ x = np.arange(START_EPOCH, START_EPOCH + EPOCHS)
 
 losses = np.vstack((train_losses, test_losses))
 loss_fig, loss_ax = plot_data(x, losses, ["Training", "Testing"], f"Loss vs. Epoch ({DATA_NAME})", "Loss")
-plt.savefig(f"transformer_matrix_plots/{DATA_NAME}_iter{ITER_INDEX}_ID{JOB_ID}_n{N}_hs{HIDDEN_SIZE}_bs{BATCH_SIZE}_ws{WORLD_SIZE}_loss")
+plt.savefig(f"transformer_matrix_plots/{DATA_NAME}_iter{ITER_INDEX}_ID{JOB_ID}_n{N}_hs{HIDDEN_SIZE}_bs{BATCH_SIZE}_loss")
 
 accuracies = np.vstack((train_accuracies, test_accuracies)) * 100
 acc_fig, acc_ax = plot_data(x, accuracies, ["Training", "Testing"], f"Accuracy vs. Epoch ({DATA_NAME})", "Accuracy (%)")
-plt.savefig(f"transformer_matrix_plots/{DATA_NAME}_iter{ITER_INDEX}_ID{JOB_ID}_n{N}_hs{HIDDEN_SIZE}_bs{BATCH_SIZE}_ws{WORLD_SIZE}_acc")
+plt.savefig(f"transformer_matrix_plots/{DATA_NAME}_iter{ITER_INDEX}_ID{JOB_ID}_n{N}_hs{HIDDEN_SIZE}_bs{BATCH_SIZE}_acc")
 
 lr_fig, lr_ax = plot_data(x, learning_rates, title=f"Learning Rate vs. Epoch ({DATA_NAME})", ylabel="Learning Rate")
-# plt.savefig(f"transformer_matrix_plots/{data_name}_iter{iter_index}_ID{JOB_ID}_n{N}_hs{HIDDEN_SIZE}_bs{BATCH_SIZE}_ws{WORLD_SIZE}_lr")
+# plt.savefig(f"transformer_matrix_plots/{data_name}_iter{iter_index}_ID{JOB_ID}_n{N}_hs{HIDDEN_SIZE}_bs{BATCH_SIZE}_lr")
 
 

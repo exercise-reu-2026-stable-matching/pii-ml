@@ -191,6 +191,8 @@ with open(f"saved_transformer_models/{SAVE_MODEL_SUBDIR}/{DATA_NAME}_iter{ITER_I
 
             "print_freq": PRINT_FREQ,
             "checkpoint_freq": CHECKPOINT_FREQ,
+            
+            "world_size": WORLD_SIZE,
         },
         f
     )
@@ -669,8 +671,6 @@ class Transformer(nn.Module):
         """
         bs = input_seq.size(0)
 
-        key_padding_mask = None
-
         input_embs = self.embed_ff(input_seq)
 
         # Add a unique embedding to each token embedding depending on its position in the sequence
@@ -680,6 +680,10 @@ class Transformer(nn.Module):
 
         # Concatenate a learnable output vector to the embeddings
         embs = torch.cat((self.out_vec.expand(bs, 1, -1), embs), dim=1)
+
+        # Mask the output vector's key for the purposes of attention
+        key_padding_mask = torch.zeros(bs, embs.size(1), dtype=torch.bool, device=embs.get_device())
+        key_padding_mask[:, 0] = 1
 
         # Pass the embeddings through each Transformer block
         for block in self.blocks:
