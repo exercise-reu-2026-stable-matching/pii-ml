@@ -1,0 +1,21 @@
+{
+    "batch_size": 128,
+    "learning_rate": 0.0014,
+    "epochs": 200,
+    "buffer_size": 1048576,
+    "csv_chunk_size": 1000000,
+    "partition_size": 200000,
+    "n": 20,
+    "data_len": 2000000,
+    "iter_index": 1,
+    "train_ratio": 0.75,
+    "test_ratio": 0.25,
+    "shuffle_rand_seed": 1,
+    "output_size": 2,
+    "hidden_size": 128,
+    "num_layers": 4,
+    "num_heads": 8,
+    "start_epoch": 0,
+    "print_freq": 1,
+    "checkpoint_freq": 10
+}
