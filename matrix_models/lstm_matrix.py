@@ -168,7 +168,7 @@ print("Loading data...")
 
 # %%
 data_len = 2000000
-iter_index = 0
+iter_index = 1
 
 data_name = f"matrixStateData_{data_len}_{n}"
 
@@ -388,7 +388,11 @@ class HybridModel(nn.Module):
 
         return out
 
-# %%
+# %%ss += loss.item()
+
+        # Backpropagation
+        loss.backward()
+        optimize
 (singleton_feats, seq_feats) ,_y = training_data[0]
 
 bidirectional = False
@@ -496,7 +500,7 @@ def plot_data_to_csv(learning_rates, train_losses, test_losses, train_accuracies
         "test_accuracy": test_accuracies[0:epoch],
     })
 
-    df.to_csv(f"matrixPlotData/{data_name}_iter{iter_index}{bi_str}_acc_hybrid.csv", index=False)
+    df.to_csv(f"lstm_matrix_plot_data/new_{data_name}_iter{iter_index}{bi_str}_acc_hybrid.csv", index=False)
 
 # %%
 learning_rates = np.zeros(epochs, dtype=np.float32)
@@ -520,7 +524,7 @@ for t in range(epochs):
         print(f"Train Error: \n Accuracy: {(100*train_accuracy):>0.1f}%, Avg loss: {train_loss:>8f} \n")
         print(f"Test Error: \n Accuracy: {(100*test_accuracy):>0.1f}%, Avg loss: {test_loss:>8f} \n")
 
-    if t % 1000 == 0:
+    if t % 10 == 0:
         plot_data_to_csv(learning_rates, train_losses, test_losses, train_accuracies, test_accuracies, t)
 
 plot_data_to_csv(learning_rates, train_losses, test_losses, train_accuracies, test_accuracies, epochs)
@@ -553,13 +557,13 @@ x = np.arange(0, epochs)
 
 losses = np.vstack((train_losses, test_losses))
 loss_fig, loss_ax = plot_data(x, losses, ["Training", "Testing"], f"Loss vs. Epoch ({data_name})", "Loss")
-plt.savefig(f"lstm_matrix_plots/{data_name}_iter{iter_index}{bi_str}_hybrid_loss")
+plt.savefig(f"lstm_matrix_plots/new_{data_name}_iter{iter_index}{bi_str}_hybrid_loss")
 
 accuracies = np.vstack((train_accuracies, test_accuracies)) * 100
 acc_fig, acc_ax = plot_data(x, accuracies, ["Training", "Testing"], f"Accuracy vs. Epoch ({data_name})", "Accuracy (%)")
-plt.savefig(f"lstm_matrix_plots/{data_name}_iter{iter_index}{bi_str}_hybrid_acc")
+plt.savefig(f"lstm_matrix_plots/new_{data_name}_iter{iter_index}{bi_str}_hybrid_acc")
 
 lr_fig, lr_acc = plot_data(x, learning_rates, title=f"Learning Rate vs. Epoch ({data_name})", ylabel="Learning Rate")
-# plt.savefig(f"lstm_matrix_plots/{data_name}_iter{iter_index}{bi_str}_hybrid_lr")
+# plt.savefig(f"lstm_matrix_plots/new_{data_name}_iter{iter_index}{bi_str}_hybrid_lr")
 
 

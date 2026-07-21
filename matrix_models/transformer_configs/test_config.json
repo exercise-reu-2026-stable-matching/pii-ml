@@ -6,7 +6,7 @@
     "csv_chunk_size": 1000000,
     "partition_size": 200000,
     "start_epoch": 0,
-    "n": 20,
+    "n": 10,
     "data_len": 20000,
     "iter_index": 0,
     "train_ratio": 0.75,
