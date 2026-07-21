@@ -91,6 +91,7 @@ if len(sys.argv) > 1:
     HIDDEN_SIZE = config["hidden_size"]
     NUM_LAYERS = config["num_layers"]
     NUM_HEADS = config["num_heads"]
+    MASK_OUT_VEC = config.get("mask_out_vec", False)
     SAVE_MODEL_SUBDIR = config.get("save_model_subdir", f"{DATA_NAME}_iter{ITER_INDEX}_hs{HIDDEN_SIZE}")
     TORCH_RAND_SEED = config.get("torch_rand_seed", torch.seed())
 
@@ -133,6 +134,9 @@ else:
     HIDDEN_SIZE = 128
     NUM_LAYERS = 4
     NUM_HEADS = 8
+
+    MASK_OUT_VEC = True
+
     SAVE_MODEL_SUBDIR = f"{DATA_NAME}_iter{ITER_INDEX}_hs{HIDDEN_SIZE}"
     TORCH_RAND_SEED = torch.seed()
 
@@ -144,13 +148,14 @@ else:
     PRINT_FREQ = 1
     CHECKPOINT_FREQ = 10
 
+MASK_OUT_STR = "mask" if MASK_OUT_VEC else "unmask"
 NP_RAND_GEN = np.random.default_rng(SHUFFLE_RAND_SEED)
 
 # %%
 os.makedirs(os.path.join("saved_transformer_models", SAVE_MODEL_SUBDIR), exist_ok=True)
 
 # Save all hyper parameters to a JSON file
-with open(f"saved_transformer_models/{SAVE_MODEL_SUBDIR}/{DATA_NAME}_iter{ITER_INDEX}_ID{JOB_ID}_n{N}_hs{HIDDEN_SIZE}_bs{BATCH_SIZE}.json", "w") as f:
+with open(f"saved_transformer_models/{SAVE_MODEL_SUBDIR}/{DATA_NAME}_iter{ITER_INDEX}_ID{JOB_ID}_n{N}_hs{HIDDEN_SIZE}_bs{BATCH_SIZE}_{MASK_OUT_STR}.json", "w") as f:
     json.dump(
         {
             "batch_size": BATCH_SIZE,
@@ -173,6 +178,7 @@ with open(f"saved_transformer_models/{SAVE_MODEL_SUBDIR}/{DATA_NAME}_iter{ITER_I
             "hidden_size": HIDDEN_SIZE,
             "num_layers": NUM_LAYERS,
             "num_heads": NUM_HEADS,
+            "mask_out_vec": MASK_OUT_VEC,
             "save_model_subdir": SAVE_MODEL_SUBDIR,
             "torch_rand_seed": TORCH_RAND_SEED,
             "start_epoch": START_EPOCH,
@@ -622,11 +628,10 @@ class Transformer(nn.Module):
         num_layers (int): Number of Transformer blocks.
         num_heads (int): Number of attention heads.
     """
-    def __init__(self, input_size, output_size, hidden_size=128, num_layers=3, num_heads=4):
+    def __init__(self, input_size, output_size, hidden_size=128, num_layers=3, num_heads=4, mask_out_vec=False):
         super(Transformer, self).__init__()
 
         self.embed_ff = nn.Linear(input_size, hidden_size)
-
         self.pos_emb = Sinusoidal2dPosEnc(hidden_size)
 
         self.blocks = nn.ModuleList([
@@ -634,8 +639,9 @@ class Transformer(nn.Module):
         ])
 
         self.out_vec = nn.Parameter(torch.zeros(1, 1, hidden_size))
-
         self.fc_out = nn.Linear(hidden_size, output_size)
+        
+        self.mask_out_vec = mask_out_vec
 
     def forward(self, input_seq):
         """
@@ -659,9 +665,11 @@ class Transformer(nn.Module):
         # Concatenate a learnable output vector to the embeddings
         embs = torch.cat((self.out_vec.expand(bs, 1, -1), embs), dim=1)
 
-        # Mask the output vector's key for the purposes of attention
         key_padding_mask = torch.zeros(bs, embs.size(1), dtype=torch.bool, device=embs.get_device())
-        key_padding_mask[:, 0] = 1
+
+        # Mask the output vector's key for the purposes of attention
+        if self.mask_out_vec:
+            key_padding_mask[:, 0] = 1
 
         # Pass the embeddings through each Transformer block
         for block in self.blocks:
@@ -677,8 +685,14 @@ torch.manual_seed(TORCH_RAND_SEED)
 SEQ_FEAT_LENGTH = 7
 
 # Create model
-model = Transformer(SEQ_FEAT_LENGTH, output_size=OUTPUT_SIZE, hidden_size=HIDDEN_SIZE, 
-                            num_layers=NUM_LAYERS, num_heads=NUM_HEADS).to(device)
+model = Transformer(
+    SEQ_FEAT_LENGTH,
+    output_size=OUTPUT_SIZE,
+    hidden_size=HIDDEN_SIZE, 
+    num_layers=NUM_LAYERS,
+    num_heads=NUM_HEADS,
+    mask_out_vec=MASK_OUT_VEC
+).to(device)
 
 if WEIGHT_FILE is not None:
     model.load_state_dict(torch.load(WEIGHT_FILE))
@@ -787,10 +801,10 @@ def plot_data_to_csv(learning_rates, train_losses, test_losses, train_accuracies
         "test_accuracy": test_accuracies[0:local_epoch],
     })
 
-    df.to_csv(f"transformer_matrix_plot_data/{DATA_NAME}_iter{ITER_INDEX}_ID{JOB_ID}_n{N}_hs{HIDDEN_SIZE}_bs{BATCH_SIZE}.csv", index=False)
+    df.to_csv(f"transformer_matrix_plot_data/{DATA_NAME}_iter{ITER_INDEX}_ID{JOB_ID}_n{N}_hs{HIDDEN_SIZE}_bs{BATCH_SIZE}_{MASK_OUT_STR}.csv", index=False)
 
 def save_model(epoch: int, sub_directory: str):
-    file_name = f"{DATA_NAME}_iter{ITER_INDEX}_ID{JOB_ID}_n{N}_hs{HIDDEN_SIZE}_bs{BATCH_SIZE}_ep{epoch:04d}"
+    file_name = f"{DATA_NAME}_iter{ITER_INDEX}_ID{JOB_ID}_n{N}_hs{HIDDEN_SIZE}_bs{BATCH_SIZE}_{MASK_OUT_STR}_ep{epoch:04d}"
     torch.save(model.state_dict(), f"saved_transformer_models/{sub_directory}/{file_name}.pt")
 
 def format_seconds(n):
@@ -867,13 +881,13 @@ x = np.arange(START_EPOCH, START_EPOCH + EPOCHS)
 
 losses = np.vstack((train_losses, test_losses))
 loss_fig, loss_ax = plot_data(x, losses, ["Training", "Testing"], f"Loss vs. Epoch ({DATA_NAME})", "Loss")
-plt.savefig(f"transformer_matrix_plots/{DATA_NAME}_iter{ITER_INDEX}_ID{JOB_ID}_n{N}_hs{HIDDEN_SIZE}_bs{BATCH_SIZE}_loss")
+plt.savefig(f"transformer_matrix_plots/{DATA_NAME}_iter{ITER_INDEX}_ID{JOB_ID}_n{N}_hs{HIDDEN_SIZE}_bs{BATCH_SIZE}_{MASK_OUT_STR}_loss")
 
 accuracies = np.vstack((train_accuracies, test_accuracies)) * 100
 acc_fig, acc_ax = plot_data(x, accuracies, ["Training", "Testing"], f"Accuracy vs. Epoch ({DATA_NAME})", "Accuracy (%)")
-plt.savefig(f"transformer_matrix_plots/{DATA_NAME}_iter{ITER_INDEX}_ID{JOB_ID}_n{N}_hs{HIDDEN_SIZE}_bs{BATCH_SIZE}_acc")
+plt.savefig(f"transformer_matrix_plots/{DATA_NAME}_iter{ITER_INDEX}_ID{JOB_ID}_n{N}_hs{HIDDEN_SIZE}_bs{BATCH_SIZE}_{MASK_OUT_STR}_acc")
 
 lr_fig, lr_ax = plot_data(x, learning_rates, title=f"Learning Rate vs. Epoch ({DATA_NAME})", ylabel="Learning Rate")
-# plt.savefig(f"transformer_matrix_plots/{data_name}_iter{iter_index}_ID{JOB_ID}_n{N}_hs{HIDDEN_SIZE}_bs{BATCH_SIZE}_lr")
+# plt.savefig(f"transformer_matrix_plots/{data_name}_iter{iter_index}_ID{JOB_ID}_n{N}_hs{HIDDEN_SIZE}_bs{BATCH_SIZE}_{MASK_OUT_STR}_lr")
 
 
