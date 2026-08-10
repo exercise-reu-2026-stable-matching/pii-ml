@@ -15,7 +15,7 @@ If running the matrix models through a .ipynb file or running the mean models, i
 
 The mean models do not support running inference on a saved model or saving models in general. There is only the option to train a model on given input data.
 
-To generate your own mean state data, use the *java-sequential-solver* repository. Use the *mean-state-data-collection* branch to collect mean state data. To use already existing data, untar and/or unzip the corresponding file in *mean_models/mean_data*.
+To generate your own mean state data, use the *java-sequential-solver* repository. Use the [mean-state-data-collection](https://github.com/exercise-reu-2026-stable-matching/java-sequential-solver/tree/mean-state-data-collection) branch to collect mean state data. To use already existing data, untar and/or unzip the corresponding file in *mean_models/mean_data*.
 
 To extract the csv from a .tar.gz file:
 ```bash
@@ -55,7 +55,7 @@ Matrix models do not support inference using an already trained model, but the t
 
 ### Matrix State Data
 
-To generate your own matrix state data, use the *java-sequential-solver* repository. Use the *matrix-state-data-collection* branch to collect matrix state data. To use already existing data, unzip the corresponding file in *mean_models/mean_data*. Both the iteration and trial files are needed.
+To generate your own matrix state data, use the *java-sequential-solver* repository. Use the [matrix-state-data-collection](https://github.com/exercise-reu-2026-stable-matching/java-sequential-solver/tree/matrix-state-data-collection) branch to collect matrix state data. To use already existing data, unzip the corresponding file in *mean_models/mean_data*. Both the iteration and trial files are needed.
 
 ```bash
 gunzip -k file_iter.csv.gz
