@@ -47,7 +47,7 @@ dataset_str = f"stateData_{data_len}_{n}_itr1"
 train_ratio = 0.75
 ```
 
-Graphs detailing the loss and accuracy as the model trains will be output in either *mean_models/basic_nn_mean_plots* or *mean_models/lstm_mean_plots* based on which type of model was run.
+Graphs detailing the loss and accuracy as the model trains will be output in either `mean_models/basic_nn_mean_plots` or `mean_models/lstm_mean_plots` based on which type of model was run.
 
 ## Matrix Model Usage
 
@@ -76,11 +76,11 @@ train_ratio = 0.75
 test_ratio = 0.25
 ```
 
-Graphs detailing the loss and accuracy as the LSTM model trains will be output in *matrix_models/lstm_matrix_plots*. The csvs used to generate these plots are found in *matrix_models/lstm_matrix_plot_data*.
+Graphs detailing the loss and accuracy as the LSTM model trains will be output in `matrix_models/lstm_matrix_plots`. The csvs used to generate these plots are found in `matrix_models/lstm_matrix_plot_data`.
 
 ### Transformer
 
-To run the transformer model, a configuration file found in *matrix_models/transformer_configs* must be specified. If starting training from scratch, *weight_file* must be null and *start_epoch* must be 0.
+To run the transformer model, a configuration file found in `matrix_models/transformer_configs` must be specified. If starting training from scratch, `weight_file` must be null and `start_epoch` must be 0.
 ```json
 {
     // Sample configuration file
@@ -108,7 +108,7 @@ To run the transformer model, a configuration file found in *matrix_models/trans
 }
 ```
 
-If continuing training on an already trained transformer model, the *weight_file* and *start_epoch* configurations must be set.
+If continuing training on an already trained transformer model, the `weight_file` and `start_epoch` configurations must be set.
 ```json
 {
     // Example configuration that starts from epoch 100 on an already trained model
