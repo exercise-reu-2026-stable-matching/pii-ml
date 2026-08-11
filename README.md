@@ -96,6 +96,7 @@ To run the transformer model, a configuration file found in *matrix_models/trans
     "train_ratio": 0.75,
     "test_ratio": 0.25,
     "shuffle_rand_seed": 1, // Seed used for shuffling data
+    "torch_rand_seed": 42, // Seed used any PyTorch randomness
     "output_size": 2,
     "hidden_size": 64,
     "num_layers": 4,
