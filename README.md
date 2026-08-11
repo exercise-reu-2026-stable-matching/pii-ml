@@ -157,7 +157,7 @@ Juniper Pasternak
 juniper.pasternak23@kzoo.edu
 ## Acknowledgements
 
-Thank you to William Bradley and Jeffery Xu for their Java sequential solver implementation of PII.
+Thank you to William Bradley and Jeffrey Xu for their Java sequential solver implementation of PII.
 
 Parts of out code were based on [2D Positional Encoding](https://github.com/wzlxjtu/PositionalEncoding2D/blob/master/positionalembedding2d.py) and [Pytorch Tutorials](https://github.com/LukeDitria/pytorch_tutorials/blob/main/section14_transformers/solutions/Pytorch1_Transformer_Text_Classification_Multi_Block.ipynb)
 
