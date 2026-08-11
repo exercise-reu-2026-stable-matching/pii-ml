@@ -165,7 +165,7 @@ juniper.pasternak23@kzoo.edu
 
 Thank you to William Bradley and Jeffrey Xu for their Java sequential solver implementation of PII.
 
-Parts of out code are based on [2D Positional Encoding](https://github.com/wzlxjtu/PositionalEncoding2D/blob/master/positionalembedding2d.py) (used with permission) and [Pytorch Tutorials](https://github.com/LukeDitria/pytorch_tutorials/blob/main/section14_transformers/solutions/Pytorch1_Transformer_Text_Classification_Multi_Block.ipynb) (used under the MIT license).
+Parts of our code are based on [2D Positional Encoding](https://github.com/wzlxjtu/PositionalEncoding2D/blob/master/positionalembedding2d.py) (used with permission) and [Pytorch Tutorials](https://github.com/LukeDitria/pytorch_tutorials/blob/main/section14_transformers/solutions/Pytorch1_Transformer_Text_Classification_Multi_Block.ipynb) (used under the MIT license).
 
 ## License
 
