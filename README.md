@@ -7,7 +7,7 @@ PII Cycle Prediction contains a variety of machine learning models used to predi
 Use the package manager [pip](https://pip.pypa.io/en/stable/) to install everything in the *requirements.txt* file:
 
 ```bash
-pip install requirements.txt
+pip install -r requirements.txt
 ```
 If running the matrix models through a .ipynb file or running the mean models, ipykernel must also be installed.
 
