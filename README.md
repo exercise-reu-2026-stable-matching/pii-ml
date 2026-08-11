@@ -4,12 +4,12 @@ PII Cycle Prediction contains a variety of machine learning models used to predi
 
 ## Installation
 
-Use the package manager [pip](https://pip.pypa.io/en/stable/) to install everything in the *requirements.txt* file:
+Use the package manager [pip](https://pip.pypa.io/en/stable/) to install everything in the `requirements.txt` file:
 
 ```bash
 pip install -r requirements.txt
 ```
-If running the matrix models through a .ipynb file or running the mean models, ipykernel must also be installed.
+If running the models through a .ipynb file or running the mean models, `ipykernel` must also be installed.
 
 ## Mean Model Usage
 
@@ -127,40 +127,44 @@ python transformer_matrix.py transformer_configs/matrixStateData_2000000_20_iter
 
 ## File Manifest
 
-- matrix_models
-  - lstm_matrix_plot_data - directory that contains csvs with loss and accuracy data from training the LSTM
-  - lstm_matrix_plots - directory that contains loss and accuracy graphs from training the LSTM
-  - matrix_data - directory that contains matrix state data used as input
-  - saved_transformer_models - directory that contains saved checkpoint files from trained transformer models
-  - transformer_configs - directory that contains configuration files for the transformer
-  - transformer_matrix_plot_data - directory that contains csvs with loss and accuracy data from training the transformer
-  - transformer_matrix_plots - directory that contains loss and accuracy graphs from training the transformer
-  - lstm_matrix.py - file used to train an LSTM model on matrix state data
-  - transformer_matrix.py - file used to train a transformer model on matrix state data
-  - plot_from_datafile.ipynb - file used to graph model accuracy data from multiple csvs
-- mean_models
-  - basic_nn_mean_plots - directory that contains loss and accuracy graphs from training the feed-forward model
-  - lstm_mean_plots - directory that contains loss and accuracy graphs from training the LSTM model
-  - mean_data - directory that contains mean state data used as input
-  - basic_nn_mean.py - file used to train a feed-forward model on mean state data
-  - lstm_mean.py - file used to train an LSTM model on mean state data
-
+- `matrix_models`
+  - `lstm_matrix_plot_data`: directory that contains csvs with loss and accuracy data from training the LSTM
+  - `lstm_matrix_plots`: directory that contains loss and accuracy graphs from training the LSTM
+  - `matrix_data`: directory that contains matrix state data used as input
+  - `saved_transformer_models`: directory that contains saved checkpoint files from trained transformer models
+  - `transformer_configs`: directory that contains configuration files for the transformer
+  - `transformer_matrix_plot_data`: directory that contains csvs with loss and accuracy data from training the transformer
+  - `transformer_matrix_plots`: directory that contains loss and accuracy graphs from training the transformer
+  - `lstm_matrix.py`: file used to train an LSTM model on matrix state data
+  - `transformer_matrix.py`: file used to train a transformer model on matrix state data
+  - `plot_from_datafile.ipynb`: file used to graph model accuracy data from multiple csvs
+- `mean_models`
+  - `basic_nn_mean_plots`: directory that contains loss and accuracy graphs from training the feed-forward model
+  - `lstm_mean_plots`: directory that contains loss and accuracy graphs from training the LSTM model
+  - `mean_data`: directory that contains mean state data used as input
+  - `basic_nn_mean.py`: file used to train a feed-forward model on mean state data
+  - `lstm_mean.py`: file used to train an LSTM model on mean state data
 
 ## Known Bugs
 
-Support for using Slurm Workload Manager to run the matrix models and support for using a transformer with pytorch's Distributed Data Parallel is included. Job scripts for running Slurm jobs on all models have the directories hard coded and must be changed to be used properly.
+Support for using Slurm Workload Manager to run the matrix models and support for using a transformer with PyTorch's Distributed Data Parallel are included.
+
+Job scripts for running Slurm jobs on all models have directories hard coded within script variables and must be changed to be used properly. In particular, `reujpasternak` is often hardcoded as the Linux username.
+
+Within this repository, Distributed Data Parallel and Slurm support is only intended for 1 GPU per node, but this can be adjusted if multiple GPUs are available per node.
 
 ## Contact
-Matthew Goldman
+Matthew Goldman  
 mgoldman5@binghamton.edu
 
-Juniper Pasternak
+Juniper Pasternak  
 juniper.pasternak23@kzoo.edu
+
 ## Acknowledgements
 
 Thank you to William Bradley and Jeffrey Xu for their Java sequential solver implementation of PII.
 
-Parts of out code were based on [2D Positional Encoding](https://github.com/wzlxjtu/PositionalEncoding2D/blob/master/positionalembedding2d.py) and [Pytorch Tutorials](https://github.com/LukeDitria/pytorch_tutorials/blob/main/section14_transformers/solutions/Pytorch1_Transformer_Text_Classification_Multi_Block.ipynb)
+Parts of out code are based on [2D Positional Encoding](https://github.com/wzlxjtu/PositionalEncoding2D/blob/master/positionalembedding2d.py) (used with permission) and [Pytorch Tutorials](https://github.com/LukeDitria/pytorch_tutorials/blob/main/section14_transformers/solutions/Pytorch1_Transformer_Text_Classification_Multi_Block.ipynb) (used under the MIT license).
 
 ## License
 
