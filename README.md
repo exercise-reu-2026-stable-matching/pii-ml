@@ -117,7 +117,7 @@ If continuing training on an already trained transformer model, the `weight_file
 }
 ```
 
-Graphs detailing the loss and accuracy as the LSTM model trains will be output in `matrix_models/transformer_matrix_plots`. The csvs used to generate these plots are found in `matrix_models/transformer_matrix_plot_data`. A saved checkpoint file will be generated every `checkpoint_freq` epochs. Saved checkpoint files are found in `saved_transformer_models` which are then sorted by `matrixStateData_data_len_n_iter_index_hidden_size`.
+Graphs detailing the loss and accuracy as the transformer model trains will be output in `matrix_models/transformer_matrix_plots`. The csvs used to generate these plots are found in `matrix_models/transformer_matrix_plot_data`. A saved checkpoint file will be generated every `checkpoint_freq` epochs. Saved checkpoint files are found in `saved_transformer_models` which are then sorted by `matrixStateData_data_len_n_iter_index_hidden_size`.
 
 To run the transformer model, use the following command. The first argument specifies the configuration file that will be used to set up the input data and hyperparameters for the model.
 
