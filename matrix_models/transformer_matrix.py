@@ -508,35 +508,17 @@ logging.info(f"Preprocessing done!")
 # %reset_selective -f "(^model$|^loss_fn$|^optimizer$|^scheduler$)"
 
 # %%
-class SinusoidalPosEmb(nn.Module):
-    def __init__(self, dim):
-        super().__init__()
-        self.dim = dim
+"""
+The following class `Sinudosial2dPosEnc` was modified, with permission,
+from code by Zelun Wang and Jyh-Charn Liu as a part of the following publication:
+Wang, Zelun, and Jyh-Charn Liu.
+"Translating math formula images to LaTeX sequences using deep neural networks with sequence-level training."
+International Journal on Document Analysis and Recognition (IJDAR) (2020): 1-13.
 
-    def forward(self, x):
-        device = x.device
-        half_dim = self.dim // 2
-        emb = math.log(10000) / (half_dim - 1)
-        emb = torch.exp(torch.arange(half_dim, device=device) * -emb)
-        emb = x[:, None] * emb[None, :]
-        emb = torch.cat((emb.sin(), emb.cos()), dim=-1)
-        return emb
+Orginal source: https://github.com/wzlxjtu/PositionalEncoding2D/blob/master/positionalembedding2d.py
+"""
 
-# %%
-class LearnedPositionalEncoding(nn.Module):
-    def __init__(self, max_seq_len, dim):
-        super().__init__()
-        self.position_embeddings = nn.Embedding(max_seq_len, dim)
-        
-    def forward(self, x):
-        positions = torch.arange(x.size(1), device=x.device).expand(x.size(0), -1)
-        position_embeddings = self.position_embeddings(positions)
-        return x + position_embeddings
-
-# %%
 class Sinusoidal2dPosEnc(nn.Module):
-    # https://github.com/wzlxjtu/PositionalEncoding2D/blob/master/positionalembedding2d.py
-
     def __init__(self, encoding_dim):
         super().__init__()
         self.encoding_dim = encoding_dim
@@ -567,9 +549,35 @@ class Sinusoidal2dPosEnc(nn.Module):
         return pe.permute([1,2,0])
 
 # %%
-class TransformerBlock(nn.Module):
-    # https://github.com/LukeDitria/pytorch_tutorials/blob/main/section14_transformers/solutions/Pytorch1_Transformer_Text_Classification_Multi_Block.ipynb
+"""
+The following classes `TransformerBlock` and `Transformer` are used and modified
+under the MIT License as described below.
+Original source: https://github.com/LukeDitria/pytorch_tutorials
 
+MIT License
+
+Copyright (c) 2023 LukeDitria
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+"""
+
+class TransformerBlock(nn.Module):
     def __init__(self, hidden_size=128, num_heads=4):
         super().__init__()
         
@@ -615,8 +623,6 @@ class TransformerBlock(nn.Module):
 
 # %%
 class Transformer(nn.Module):
-    # https://github.com/LukeDitria/pytorch_tutorials/blob/main/section14_transformers/solutions/Pytorch1_Transformer_Text_Classification_Multi_Block.ipynb
-
     """
     Transformer model consisting of an embedding layer, positional embeddings, 
     multiple Transformer blocks, and a final output layer.

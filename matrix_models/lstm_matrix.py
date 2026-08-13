@@ -164,8 +164,6 @@ class CustomDataLoader:
 
         return (batch_singletons, packed_batch_means), batch_y
 
-print("Loading data...")
-
 # %%
 data_len = 2000000
 iter_index = 1
@@ -201,8 +199,6 @@ test_data = PIIStateDataset(
 train_dataloader = DataLoader(training_data, batch_size=batch_size, shuffle=True)
 test_dataloader = DataLoader(test_data, batch_size=batch_size, shuffle=False)
 
-print("Data loading complete.")
-
 # train_dataloader = CustomDataLoader(training_data, batch_size)
 # test_dataloader = CustomDataLoader(test_data, batch_size)
 
@@ -232,26 +228,17 @@ next(iter(train_dataloader))
 
 # %%
 
-
 # %%
-# Sinusoidal positional embeds
-class SinusoidalPosEmb(nn.Module):
+"""
+The following class `Sinudosial2dPosEnc` was modified, with permission,
+from code by Zelun Wang and Jyh-Charn Liu as a part of the following publication:
+Wang, Zelun, and Jyh-Charn Liu.
+"Translating math formula images to LaTeX sequences using deep neural networks with sequence-level training."
+International Journal on Document Analysis and Recognition (IJDAR) (2020): 1-13.
 
-    def __init__(self, dim):
-        super().__init__()
-        self.dim = dim
+Orginal source: https://github.com/wzlxjtu/PositionalEncoding2D/blob/master/positionalembedding2d.py
+"""
 
-    def forward(self, x):
-        device = x.device
-        half_dim = self.dim // 2
-        emb = math.log(10000) / (half_dim - 1)
-        emb = torch.exp(torch.arange(half_dim, device=device) * -emb)
-        emb = x[:, None] * emb[None, :]
-        emb = torch.cat((emb.sin(), emb.cos()), dim=-1)
-        return emb
-    
-
-# %%
 class Sinusoidal2dPosEnc(nn.Module):
     def __init__(self, encoding_dim):
         super().__init__()
@@ -281,17 +268,6 @@ class Sinusoidal2dPosEnc(nn.Module):
         pe[dim + 1::2, :, :] = torch.cos(pos_h * div_term).transpose(0, 1).unsqueeze(2).repeat(1, 1, width)
 
         return pe.permute([1,2,0])
-
-# %%
-class LearnedPositionalEncoding(nn.Module):
-    def __init__(self, max_seq_len, dim):
-        super().__init__()
-        self.position_embeddings = nn.Embedding(max_seq_len, dim)
-        
-    def forward(self, x):
-        positions = torch.arange(x.size(1), device=x.device).expand(x.size(0), -1)
-        position_embeddings = self.position_embeddings(positions)
-        return x + position_embeddings
 
 # %%
 """
@@ -388,18 +364,14 @@ class HybridModel(nn.Module):
 
         return out
 
-# %%ss += loss.item()
-
-        # Backpropagation
-        loss.backward()
-        optimize
+# %%
 (singleton_feats, seq_feats) ,_y = training_data[0]
 
 bidirectional = False
 bi_str = "_bi" if bidirectional else ""
 
 # model = LSTMModel(seq_feats.size(1), 2, 16, 1, bidirectional).to(device)
-model = HybridModel(singleton_feats.size(0), seq_feats.size(1), 2, 64, 2, 0.25, bidirectional, True).to(device)
+model = HybridModel(singleton_feats.size(0), seq_feats.size(1), 2, 64, 8, 0.25, bidirectional, True).to(device)
 
 # %%
 # loss_fn = nn.CrossEntropyLoss()
@@ -500,7 +472,7 @@ def plot_data_to_csv(learning_rates, train_losses, test_losses, train_accuracies
         "test_accuracy": test_accuracies[0:epoch],
     })
 
-    df.to_csv(f"lstm_matrix_plot_data/new_{data_name}_iter{iter_index}{bi_str}_acc_hybrid.csv", index=False)
+    df.to_csv(f"lstm_matrix_plot_data/{data_name}_iter{iter_index}{bi_str}_acc_hybrid.csv", index=False)
 
 # %%
 learning_rates = np.zeros(epochs, dtype=np.float32)
@@ -524,7 +496,7 @@ for t in range(epochs):
         print(f"Train Error: \n Accuracy: {(100*train_accuracy):>0.1f}%, Avg loss: {train_loss:>8f} \n")
         print(f"Test Error: \n Accuracy: {(100*test_accuracy):>0.1f}%, Avg loss: {test_loss:>8f} \n")
 
-    if t % 10 == 0:
+    if t % 1000 == 0:
         plot_data_to_csv(learning_rates, train_losses, test_losses, train_accuracies, test_accuracies, t)
 
 plot_data_to_csv(learning_rates, train_losses, test_losses, train_accuracies, test_accuracies, epochs)
@@ -557,13 +529,13 @@ x = np.arange(0, epochs)
 
 losses = np.vstack((train_losses, test_losses))
 loss_fig, loss_ax = plot_data(x, losses, ["Training", "Testing"], f"Loss vs. Epoch ({data_name})", "Loss")
-plt.savefig(f"lstm_matrix_plots/new_{data_name}_iter{iter_index}{bi_str}_hybrid_loss")
+plt.savefig(f"lstm_matrix_plots/{data_name}_iter{iter_index}{bi_str}_hybrid_loss")
 
 accuracies = np.vstack((train_accuracies, test_accuracies)) * 100
 acc_fig, acc_ax = plot_data(x, accuracies, ["Training", "Testing"], f"Accuracy vs. Epoch ({data_name})", "Accuracy (%)")
-plt.savefig(f"lstm_matrix_plots/new_{data_name}_iter{iter_index}{bi_str}_hybrid_acc")
+plt.savefig(f"lstm_matrix_plots/{data_name}_iter{iter_index}{bi_str}_hybrid_acc")
 
 lr_fig, lr_acc = plot_data(x, learning_rates, title=f"Learning Rate vs. Epoch ({data_name})", ylabel="Learning Rate")
-# plt.savefig(f"lstm_matrix_plots/new_{data_name}_iter{iter_index}{bi_str}_hybrid_lr")
+# plt.savefig(f"lstm_matrix_plots/{data_name}_iter{iter_index}{bi_str}_hybrid_lr")
 
 
