@@ -113,7 +113,7 @@ If continuing training on an already trained transformer model, the `weight_file
 {
     // Example configuration that starts from epoch 100 on an already trained model
     "start_epoch": 100,
-    "weight_file": "matrix_models/saved_transformer_models/matrixStateData_2000000_10_iter0_hs64/matrixStateData_2000000_10_iter0_ID105100_n10_hs64_bs64_ep0100",
+    "weight_file": "matrix_models/saved_transformer_models/matrixStateData_2000000_10_iter0_hs64/matrixStateData_2000000_10_iter0_ID105100_n10_hs64_bs64_ep0100.pt",
 }
 ```
 
