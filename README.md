@@ -150,7 +150,7 @@ python transformer_matrix.py transformer_configs/matrixStateData_2000000_20_iter
 
 Support for using Slurm Workload Manager to run the matrix models and support for using a transformer with PyTorch's Distributed Data Parallel are included.
 
-Job scripts for running Slurm jobs on all models have directories hard coded within script variables and must be changed to be used properly. In particular, `reujpasternak` is often hardcoded as the Linux username.
+Job scripts for running Slurm jobs on all models have directories hard coded within script variables, which must be changed to be used properly. In particular, `reujpasternak` is often hardcoded as the Linux username.
 
 Within this repository, Distributed Data Parallel and Slurm support is only intended for 1 GPU per node, but this can be adjusted if multiple GPUs are available per node.
 
