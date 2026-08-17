@@ -103,8 +103,8 @@ To run the transformer model, a configuration file found in `matrix_models/trans
     "num_heads": 8,
     "start_epoch": 0, // Used to specify what epoch to start from when using a pre-trained checkpoint
     "weight_file": null, // Used when starting training from a pre-trained checkpoint
-    "print_freq": 1, // How often accuracy and loss information is output
-    "checkpoint_freq": 10 // How often a checkpoint is saved for the model
+    "print_freq": 1, // How many epochs before printing accuracy and loss information
+    "checkpoint_freq": 10 // How many epochs before saving a model checkpoint
 }
 ```
 
